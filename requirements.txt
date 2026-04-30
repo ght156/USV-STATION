@@ -1,0 +1,10 @@
+# Backend (FastAPI). ROS2 的 rclpy、geometry_msgs、sensor_msgs 等请通过
+#   source /opt/ros/humble/setup.bash
+# 提供；勿用 pip 安装 *_msgs。
+# 建议使用: python3 -m venv venv --system-site-packages
+fastapi==0.122.0
+pydantic==2.12.4
+python-multipart==0.0.20
+uvicorn==0.38.0
+click>=8.0
+numpy<2

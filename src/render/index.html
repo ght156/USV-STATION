@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YILDIZ SAIR GCS</title>
+    <!-- 天地图三维：先于模块入口加载 CDN Cesium + 扩展（GeoTerrainProvider 等），官方示例见 lbs.tianditu.gov.cn sanwei -->
+    <link rel="stylesheet" href="https://api.tianditu.gov.cn/cdn/demo/sanwei/static/cesium/Widgets/widgets.css" />
+    <script src="https://api.tianditu.gov.cn/cdn/demo/sanwei/static/cesium/Cesium.js"></script>
+    <script src="https://api.tianditu.gov.cn/cdn/plugins/cesium/Cesium_ext_min.js"></script>
+    <script src="https://api.tianditu.gov.cn/cdn/plugins/cesium/long.min.js"></script>
+    <script src="https://api.tianditu.gov.cn/cdn/plugins/cesium/bytebuffer.min.js"></script>
+    <script src="https://api.tianditu.gov.cn/cdn/plugins/cesium/protobuf.min.js"></script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/main.tsx"></script>
+  </body>
+</html>
