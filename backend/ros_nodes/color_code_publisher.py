@@ -1,60 +1,94 @@
-import rclpy
-from rclpy.node import Node
-from std_msgs.msg import String
 import json
 import os
 
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from std_msgs.msg import String
+
+
+_COLOR_QOS = QoSProfile(
+    depth=10,
+    reliability=ReliabilityPolicy.RELIABLE,
+    durability=DurabilityPolicy.TRANSIENT_LOCAL,
+)
+
+
 class ColorCodePublisher(Node):
-    """ROS2 node for publishing color codes to telemetry system"""
-    
+    """Burst-publish the current color code to mission_bridge (3× at 0.2 s)
+    then exit — the same event-style pattern as waypoint_publisher.
+
+    TRANSIENT_LOCAL QoS ensures a late-joining mission_bridge still
+    receives the latest color.
+    """
+
     def __init__(self):
-        """Initialize color code publisher with timer and data loading"""
-        super().__init__('color_code_publisher')
-        self.publisher_ = self.create_publisher(String, 'color_code', 10)
-        timer_period = 1.0
-        self.timer = self.create_timer(timer_period, self.timer_callback)
-        
-        self.color_code = self.read_color_code_json()
-        
-        self.shutdown_timer = self.create_timer(3000.0, self.shutdown_callback)
-        
-    def read_color_code_json(self):
-        """Read color code from JSON file and return color string"""
+        super().__init__("color_code_publisher")
+        self.publisher_ = self.create_publisher(String, "color_code", _COLOR_QOS)
+
+        self._color = self._load()
+
+        self._publish_count = 0
+        self._max_publish = 3
+        self._burst_interval = 0.2
+        self.timer = self.create_timer(self._burst_interval, self._timer_callback)
+        self._exit_timer = None
+
+        self.get_logger().info(
+            f"Burst-publisher ready: color={self._color}, "
+            f"{self._max_publish}× every {self._burst_interval}s"
+        )
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _load() -> str:
+        file_path = os.path.join(
+            os.path.dirname(__file__), "..", "data", "color_code.json"
+        )
         try:
-            file_path = os.path.join(os.path.dirname(__file__), "..", "data", "color_code.json")
-            with open(file_path, 'r') as file:
-                data = json.load(file)
-                return data.get("color_code", "#FF0000")
+            with open(file_path, "r") as fh:
+                data = json.load(fh)
+            return str(data.get("color_code", "#FF0000"))
         except FileNotFoundError:
-            self.get_logger().warn('color_code.json file not found, using default color')
             return "#FF0000"
-        except json.JSONDecodeError as e:
-            self.get_logger().error(f'JSON parse error: {e}, using default color')
-            return "#FF0000"
-        except Exception as e:
-            self.get_logger().error(f'File read error: {e}, using default color')
+        except (json.JSONDecodeError, OSError):
             return "#FF0000"
 
-    def timer_callback(self):
-        """Timer callback for publishing color code data"""
+    # ------------------------------------------------------------------
+    def _timer_callback(self):
         msg = String()
-        msg.data = self.color_code
+        msg.data = self._color
         self.publisher_.publish(msg)
-        self.get_logger().info('Publishing color code: %s' % msg.data)
 
-    def shutdown_callback(self):
-        """Timer callback for node shutdown"""
-        self.get_logger().info('30 seconds elapsed, shutting down node...')
-        self.destroy_node()
+        self._publish_count += 1
+        self.get_logger().info(
+            f"Published color_code {self._publish_count}/{self._max_publish}: "
+            f"{self._color}"
+        )
+
+        if self._publish_count >= self._max_publish:
+            self.get_logger().info("Burst complete — exiting.")
+            self.destroy_timer(self.timer)
+            self._schedule_exit()
+
+    def _schedule_exit(self):
+        self._exit_timer = self.create_timer(0.05, self._exit)
+
+    def _exit(self):
+        if self._exit_timer is not None:
+            self.destroy_timer(self._exit_timer)
+            self._exit_timer = None
         rclpy.shutdown()
 
+
+# ------------------------------------------------------------------
 def main(args=None):
-    """Main function for color code publisher node"""
     rclpy.init(args=args)
-    color_code_publisher = ColorCodePublisher()
-    rclpy.spin(color_code_publisher)
-    color_code_publisher.destroy_node()
+    node = ColorCodePublisher()
+    rclpy.spin(node)
+    node.destroy_node()
     rclpy.shutdown()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

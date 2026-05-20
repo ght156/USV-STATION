@@ -1,84 +1,118 @@
-import rclpy
-from rclpy.node import Node
-from std_msgs.msg import String
 import json
 import os
+from datetime import datetime, timezone
+
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from std_msgs.msg import String
+
+
+_WAYPOINT_QOS = QoSProfile(
+    depth=10,
+    reliability=ReliabilityPolicy.RELIABLE,
+    durability=DurabilityPolicy.TRANSIENT_LOCAL,
+)
+
 
 class WaypointPublisher(Node):
-    """ROS2 node for publishing waypoints to telemetry system"""
-    
+    """Burst-publish waypoints to mission_bridge (3× at 0.2 s) then exit.
+
+    Uses TRANSIENT_LOCAL QoS so that a late-joining mission_bridge still
+    receives the mission (no silent drops due to discovery timing).
+    """
+
     def __init__(self):
-        """Initialize waypoint publisher with timer and data loading"""
-        super().__init__('waypoint_publisher')
-        self.publisher_ = self.create_publisher(String, 'waypoint', 10)
-        timer_period = 1.0
-        self.timer = self.create_timer(timer_period, self.timer_callback)
+        super().__init__("waypoint_publisher")
+        self.publisher_ = self.create_publisher(String, "waypoint", _WAYPOINT_QOS)
 
-        self.waypoints = self.read_waypoints_json()
-        # Run Mission 启动新进程后的首条话题带 explicit_replan，便于 mission_bridge 在 allow_replace=false 时仍抢占；
-        # 后续 1Hz 重复同源航线不再带标志，避免每秒 cancel。
-        self._explicit_first_publish = True
+        self._waypoints, self._mission_id = self._load()
 
-        self.shutdown_timer = self.create_timer(3000.0, self.shutdown_callback)
-        
-    def read_waypoints_json(self):
-        """Read waypoints from JSON file and return waypoint list"""
+        self._publish_count = 0
+        self._max_publish = 3
+        self._burst_interval = 0.2
+        self.timer = self.create_timer(self._burst_interval, self._timer_callback)
+        self._exit_timer = None
+
+        self.get_logger().info(
+            f"Burst-publisher ready: mission_id={self._mission_id}, "
+            f"{len(self._waypoints)} waypoints, "
+            f"{self._max_publish}× every {self._burst_interval}s"
+        )
+
+    # ------------------------------------------------------------------
+    def _load(self):
+        """Return (waypoints, mission_id) from the shared JSON file."""
+        file_path = os.path.join(
+            os.path.dirname(__file__), "..", "data", "waypoints.json"
+        )
         try:
-            file_path = os.path.join(os.path.dirname(__file__), "..", "data", "waypoints.json")
-            with open(file_path, 'r') as file:
-                data = json.load(file)
-                waypoints = data.get("waypoints", [])
-                mission_name = data.get("mission_name", "unknown_mission")
-                
-                self.get_logger().info(f'Mission name: {mission_name}')
-                self.get_logger().info(f'{len(waypoints)} waypoints found')
-                
-                return waypoints
+            with open(file_path, "r") as fh:
+                data = json.load(fh)
         except FileNotFoundError:
-            self.get_logger().warn('waypoints.json file not found, using empty waypoint list')
-            return []
-        except json.JSONDecodeError as e:
-            self.get_logger().error(f'JSON parse error: {e}, using empty waypoint list')
-            return []
-        except Exception as e:
-            self.get_logger().error(f'File read error: {e}, using empty waypoint list')
-            return []
+            self.get_logger().warn("waypoints.json not found — nothing to publish")
+            return [], f"empty_{datetime.now(timezone.utc).isoformat()[:19]}"
+        except (json.JSONDecodeError, OSError) as exc:
+            self.get_logger().error(f"Failed to read waypoints.json: {exc}")
+            return [], f"error_{datetime.now(timezone.utc).isoformat()[:19]}"
 
-    def timer_callback(self):
-        """Timer callback for publishing waypoint data"""
-        if not self.waypoints:
-            self.get_logger().warn('No waypoints to publish')
+        waypoints = data.get("waypoints", [])
+        mission_name = data.get("mission_name", "unknown")
+        timestamp = data.get(
+            "timestamp", datetime.now(timezone.utc).isoformat() + "Z"
+        )
+        safe_ts = str(timestamp).replace(":", "-").replace(".", "-")
+        mission_id = f"{mission_name}_{safe_ts}"
+
+        return waypoints, mission_id
+
+    # ------------------------------------------------------------------
+    def _timer_callback(self):
+        if not self._waypoints:
+            self.get_logger().warn("No waypoints to publish — exiting.")
+            self._schedule_exit()
             return
-            
-        waypoint_data = {
-            "waypoints": self.waypoints,
-            "explicit_replan": bool(self._explicit_first_publish),
-        }
-        self._explicit_first_publish = False
-        
-        msg = String()
-        msg.data = json.dumps(waypoint_data)
-        self.publisher_.publish(msg)
-        
-        waypoint_str = "Waypoint'ler: [\n"
-        for wp in self.waypoints:
-            waypoint_str += f"  ({wp['latitude']}, {wp['longitude']})\n"
-        waypoint_str += "]"
-        self.get_logger().info(f'Publishing waypoints: {waypoint_str}')
 
-    def shutdown_callback(self):
-        """Timer callback for node shutdown"""
-        self.get_logger().info('30 seconds elapsed, shutting down node...')
-        self.destroy_node()
+        payload = {
+            "mission_id": self._mission_id,
+            "waypoints": self._waypoints,
+            "explicit_replan": True,
+        }
+
+        msg = String()
+        msg.data = json.dumps(payload)
+        self.publisher_.publish(msg)
+
+        self._publish_count += 1
+        self.get_logger().info(
+            f"Published {self._publish_count}/{self._max_publish}  "
+            f"mission_id={self._mission_id}  "
+            f"waypoints={len(self._waypoints)}"
+        )
+
+        if self._publish_count >= self._max_publish:
+            self.get_logger().info("Burst complete — exiting.")
+            self.destroy_timer(self.timer)
+            self._schedule_exit()
+
+    def _schedule_exit(self):
+        self._exit_timer = self.create_timer(0.05, self._exit)
+
+    def _exit(self):
+        if self._exit_timer is not None:
+            self.destroy_timer(self._exit_timer)
+            self._exit_timer = None
         rclpy.shutdown()
 
+
+# ------------------------------------------------------------------
 def main(args=None):
-    """Main function for waypoint publisher node"""
     rclpy.init(args=args)
-    waypoint_publisher = WaypointPublisher()
-    rclpy.spin(waypoint_publisher)
-    waypoint_publisher.destroy_node()
+    node = WaypointPublisher()
+    rclpy.spin(node)
+    node.destroy_node()
     rclpy.shutdown()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

@@ -26,6 +26,7 @@ This repository contains the core system, featuring an Electron-based desktop ap
 │   │   ├── color_code.json
 │   │   └── waypoints.json
 │   ├── ros_nodes/
+│   │   ├── cancel_publisher.py
 │   │   ├── color_code_publisher.py
 │   │   └── waypoint_publisher.py
 │   └── server/
@@ -274,8 +275,9 @@ A concise listing of available ROS 2 topics and HTTP endpoints.
 
 - `POST /api/save_color_code` - Save color code
 - `POST /api/save_waypoints` - Save waypoints
-- `POST /api/run_mission` - Start mission
-- `POST /api/run_mission2` - Start second mission
+- `POST /api/run_mission` - Start waypoint mission (burst-publishes 3× at 0.2 s then exits)
+- `POST /api/run_mission2` - Start color-code mission (same burst pattern)
+- `POST /api/cancel_navigation` - Cancel Nav2 mission (one-shot ``cancel_publisher.py``)
 
 </details>
 
@@ -298,7 +300,7 @@ A concise listing of available ROS 2 topics and HTTP endpoints.
 
 - *Map pick (Tianditu / Cesium)*: With **Waypoint Editor** open, hold **Shift** and **left-click** on the globe/imagery to fill **latitude / longitude** in the editor (WGS84 from screen pick + terrain/ellipsoid). Edit if needed → **Add** → **Save** / **Apply to Map** as usual.
 
-- **Cancel Nav** (Mission panel): Sends `POST /api/cancel_navigation` → backend publishes one `std_msgs/msg/Empty` on **`MISSION_BRIDGE_CANCEL_TOPIC`** (default **`/gcs_mission/cancel`**) so **`mission_bridge`** cancels FollowWaypoints and clears buffers — then edit waypoints / **Apply** / **Start Mission** again. **Backend terminal must `source …/ROS/setup.bash` so `ros2` is on PATH.**
+- **Cancel Nav** (Mission panel): Sends `POST /api/cancel_navigation` → backend invokes **`cancel_publisher.py`** (one-shot rclpy publisher) which sends a single `std_msgs/msg/Empty` to **`MISSION_BRIDGE_CANCEL_TOPIC`** (default **`/gcs_mission/cancel`**) and exits — **`mission_bridge`** then cancels FollowWaypoints and clears buffers so you can edit waypoints / **Apply** / **Start Mission** again. **Backend terminal must `source …/ROS/setup.bash` before launch.**
 
 - *Format*: One coordinate pair per line (latitude,longitude).
 
