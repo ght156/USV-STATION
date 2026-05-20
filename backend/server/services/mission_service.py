@@ -1,4 +1,5 @@
 import os
+import shutil
 import threading
 import subprocess
 from typing import Dict, Any
@@ -23,7 +24,41 @@ class MissionService:
             script_path=self.config_service.get_color_code_script_path(),
             mission_description="Color code mission"
         )
-    
+
+    def cancel_navigation_mission(self) -> Dict[str, Any]:
+        """Publish one std_msgs/msg/Empty to cancel mission_bridge FollowWaypoints / buffers."""
+        topic = self.config_service.get_mission_bridge_cancel_topic()
+        if not topic:
+            raise ValueError("mission bridge cancel topic is empty")
+
+        ros2 = shutil.which("ros2")
+        if not ros2:
+            raise FileNotFoundError(
+                "`ros2` not found on PATH — source your ROS distro (e.g. /opt/ros/humble/setup.bash) "
+                "before starting the backend, or extend PATH."
+            )
+
+        cmd = [
+            ros2,
+            "topic",
+            "pub",
+            "--once",
+            topic,
+            "std_msgs/msg/Empty",
+            "{}",
+        ]
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        if proc.returncode != 0:
+            tail = (proc.stderr or proc.stdout or "").strip()[-500:]
+            raise RuntimeError(tail or f"ros2 topic pub exited {proc.returncode}")
+
+        return {"status": "success", "message": "cancel published", "topic": topic}
+
     def _run_script(self, script_path: str, mission_description: str) -> Dict[str, Any]:
         """Run a Python script in a separate thread (fire-and-forget)"""
         try:

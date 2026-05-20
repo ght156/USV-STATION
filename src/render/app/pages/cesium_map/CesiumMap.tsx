@@ -28,12 +28,15 @@ import { enuYawRadiansToCompassHeadingRadians } from './utils/heading'
 import { CesiumMapProps } from './types'
 import type { RootState } from '../../store'
 import { incrementByAmount } from '../../../hooks/HeadingIndicator_features'
+import { setPendingWaypointFromMap } from '../../store/waypointsSlice'
+import { useWaypointMapPick } from './hooks/useWaypointMapPick'
 
 // Main CesiumMap component for Yildizusv telemetry visualization 
 
 const CesiumMap = (_props: CesiumMapProps) => {
   // Redux state - use applied waypoints for map visualization
   const appliedWaypoints = useSelector((state: RootState) => state.waypoints.appliedWaypoints)
+  const waypointEditorOpen = useSelector((state: RootState) => state.editor.isOpen)
   const dispatch = useDispatch()
   
   // Services
@@ -43,7 +46,11 @@ const CesiumMap = (_props: CesiumMapProps) => {
   const [showNav2Plan, setShowNav2Plan] = useState(false)
 
   // Hooks - each handles its own responsibility
-  const { viewer, usvModelRef, pathPositionRef,  viewerReady } = useCesiumViewer('cesiumContainer')
+  const { viewer, usvModelRef, pathPositionRef, viewerReady } = useCesiumViewer('cesiumContainer')
+
+  useWaypointMapPick(viewer, viewerReady, waypointEditorOpen, (latitude, longitude) => {
+    dispatch(setPendingWaypointFromMap({ latitude, longitude }))
+  })
   
   const { 
     gpsData, 
@@ -91,6 +98,8 @@ const CesiumMap = (_props: CesiumMapProps) => {
   const {
     handleRunMission,
     handleRunMission2,
+    handleCancelNavigation,
+    isCancelNavigationSending,
     handleSaveColorCode,
     isMissionRunning,
     isMission2Running,
@@ -144,7 +153,9 @@ const CesiumMap = (_props: CesiumMapProps) => {
       
       <MissionControls
         onRunMission={handleRunMission}
+        onCancelNavigation={handleCancelNavigation}
         isMissionRunning={isMissionRunning}
+        isCancelNavigationSending={isCancelNavigationSending}
       />
       
       <ExtraControls

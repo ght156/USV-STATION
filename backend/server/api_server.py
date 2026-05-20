@@ -147,7 +147,15 @@ class APIServer:
                 return self.mission_service.run_color_code_mission()
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
-    
+
+        @self.app.post("/api/cancel_navigation")
+        async def cancel_navigation():
+            """Cancel Nav2 waypoint mission via mission_bridge (ROS2 Empty on cancel topic)."""
+            try:
+                return self.mission_service.cancel_navigation_mission()
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+
     def get_app(self):
         """Get the FastAPI app instance"""
         return self.app

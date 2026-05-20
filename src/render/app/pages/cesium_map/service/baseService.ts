@@ -110,6 +110,7 @@ export enum APIEndpoints {
   NAV2_PLAN = '/api/nav2_plan',
   RUN_MISSION = '/api/run_mission',
   RUN_MISSION2 = '/api/run_mission2',
+  CANCEL_NAVIGATION = '/api/cancel_navigation',
   SAVE_COLOR_CODE = '/api/save_color_code',
   SAVE_WAYPOINTS = '/api/save_waypoints',
 }

@@ -61,6 +61,8 @@ export const MESSAGES = {
   MISSION_SUCCESS: "Mission started successfully!",
   MISSION_FAILED: "Mission could not be started!",
   MISSION_ERROR: "Error occurred while running mission!",
+  CANCEL_NAV_SUCCESS: "Navigation cancel sent to ROS (mission_bridge). You can edit waypoints then Start Mission.",
+  CANCEL_NAV_FAILED: "Could not publish cancel topic — check ROS env and backend logs.",
   COLOR_CODE_SUCCESS: (filePath: string) => `Color code saved successfully!\n${filePath}`,
   COLOR_CODE_FAILED: "Color code could not be saved!",
   COLOR_CODE_EMPTY: "Please enter a color code!"

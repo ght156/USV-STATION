@@ -13,9 +13,12 @@ class WaypointPublisher(Node):
         self.publisher_ = self.create_publisher(String, 'waypoint', 10)
         timer_period = 1.0
         self.timer = self.create_timer(timer_period, self.timer_callback)
-        
+
         self.waypoints = self.read_waypoints_json()
-        
+        # Run Mission 启动新进程后的首条话题带 explicit_replan，便于 mission_bridge 在 allow_replace=false 时仍抢占；
+        # 后续 1Hz 重复同源航线不再带标志，避免每秒 cancel。
+        self._explicit_first_publish = True
+
         self.shutdown_timer = self.create_timer(3000.0, self.shutdown_callback)
         
     def read_waypoints_json(self):
@@ -49,8 +52,9 @@ class WaypointPublisher(Node):
             
         waypoint_data = {
             "waypoints": self.waypoints,
-            "timestamp": json.dumps(self.waypoints)
+            "explicit_replan": bool(self._explicit_first_publish),
         }
+        self._explicit_first_publish = False
         
         msg = String()
         msg.data = json.dumps(waypoint_data)

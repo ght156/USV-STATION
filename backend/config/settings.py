@@ -23,6 +23,11 @@ class Settings:
     
     # Mission settings
     SCRIPT_TIMEOUT = 300  # seconds
+    # 与 mission_bridge mission_cancel_topic 对齐：后端向该 ROS 话题发布一发 Empty
+    MISSION_BRIDGE_CANCEL_TOPIC = os.environ.get(
+        "MISSION_BRIDGE_CANCEL_TOPIC",
+        "/gcs_mission/cancel",
+    )
     
     @classmethod
     def get_data_file_path(cls, filename: str) -> str:

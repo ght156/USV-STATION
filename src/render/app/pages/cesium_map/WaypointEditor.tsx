@@ -10,7 +10,8 @@ import {
   setWaypointsLoading, 
   setWaypointsError,
   clearEditorWaypoints,
-  setEditorWaypoints
+  setEditorWaypoints,
+  clearPendingWaypointFromMap
 } from '../../store/waypointsSlice';
 import type { RootState } from '../../store';
 import { parseWaypointTxt } from './utils/waypointParser';
@@ -34,9 +35,28 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onClose, onSaveWaypoint
   
   const [lat, setLat] = useState('');
   const [lon, setLon] = useState('');
+  const wasEditorOpenRef = useRef(false);
 
-  // Reset form when editor opens
-  useEffect(() => { if (isOpen) { setLat(''); setLon(''); } }, [isOpen]);
+  const pendingWaypointFromMap = useSelector(
+    (state: RootState) => state.waypoints.pendingWaypointFromMap,
+  );
+
+  /** 面板从关→开：清空输入框，避免沿用上次编辑内容 */
+  useEffect(() => {
+    if (isOpen && !wasEditorOpenRef.current) {
+      setLat('');
+      setLon('');
+    }
+    wasEditorOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  /** 地图上拾取的经纬度：填表（仅面板打开时消费） */
+  useEffect(() => {
+    if (!isOpen || !pendingWaypointFromMap) return;
+    setLat(String(pendingWaypointFromMap.latitude));
+    setLon(String(pendingWaypointFromMap.longitude));
+    dispatch(clearPendingWaypointFromMap());
+  }, [pendingWaypointFromMap, dispatch, isOpen]);
   
   if (!isOpen) return null;
 
@@ -162,6 +182,12 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onClose, onSaveWaypoint
           className="waypoint-editor-file-input"
         />
       </div>
+
+      <p className="waypoint-editor-map-hint">
+        Map pick: editor open → hold <strong>Shift</strong> and <strong>left-click</strong> the basemap →
+        lat/lon fill below →
+        optionally edit → <strong>Add</strong>, then <strong>Save</strong> / <strong>Apply to Map</strong>.
+      </p>
       
       <div className="waypoint-editor-form-container">
         <input 

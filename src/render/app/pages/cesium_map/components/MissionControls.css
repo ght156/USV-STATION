@@ -9,7 +9,7 @@
   color: white;
   font-family: monospace;
   font-size: 12px;
-  min-width: 280px;
+  min-width: 300px;
 }
 
 .mission-controls__header {
@@ -19,25 +19,53 @@
   font-weight: bold;
 }
 
+.mission-controls__row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.mission-controls__hint {
+  margin: 12px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.75);
+}
+
 .mission-controls__button {
-  width: 100%;
+  flex: 1;
   padding: 10px;
-  background-color:#dc3545;
-  color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
+  color: white;
 }
 
-.mission-controls__button:hover:not(:disabled) {
-  background-color:#c82333;
+.mission-controls__button--start {
+  background-color: #238636;
 }
 
-.mission-controls__button:disabled {
-  background-color: #ccc;
+.mission-controls__button--start:hover:not(:disabled) {
+  background-color: #2ea043;
+}
+
+.mission-controls__button--start:disabled,
+.mission-controls__button--start.mission-controls__button--running {
+  background-color: #484f58;
   cursor: not-allowed;
 }
 
+.mission-controls__button--cancel {
+  background-color: #c08400;
+}
 
+.mission-controls__button--cancel:hover:not(:disabled) {
+  background-color: #daa520;
+}
+
+.mission-controls__button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}

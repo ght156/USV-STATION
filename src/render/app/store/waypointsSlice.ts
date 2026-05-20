@@ -27,6 +27,8 @@ interface WaypointsState {
   editorWaypoints: Waypoint[];
   // Applied state - waypoints currently shown on map
   appliedWaypoints: Waypoint[];
+  /** 地图点击拾取经纬度后写入编辑器输入框（由 WaypointEditor 消费一次后清空） */
+  pendingWaypointFromMap: { latitude: number; longitude: number } | null;
   isLoading: boolean;
   error: string | null;
   saveStatus: 'idle' | 'loading' | 'success' | 'error';
@@ -35,6 +37,7 @@ interface WaypointsState {
 const initialState: WaypointsState = {
   editorWaypoints: [],
   appliedWaypoints: [],
+  pendingWaypointFromMap: null,
   isLoading: false,
   error: null,
   saveStatus: 'idle',
@@ -65,7 +68,16 @@ const waypointsSlice = createSlice({
       state.error = null;
       state.saveStatus = 'idle';
     },
-    
+    setPendingWaypointFromMap: (
+      state,
+      action: PayloadAction<{ latitude: number; longitude: number }>,
+    ) => {
+      state.pendingWaypointFromMap = action.payload;
+    },
+    clearPendingWaypointFromMap: (state) => {
+      state.pendingWaypointFromMap = null;
+    },
+
     // Applied actions - for waypoints shown on map
     setAppliedWaypoints: (state, action: PayloadAction<Waypoint[]>) => {
       state.appliedWaypoints = action.payload;
@@ -124,6 +136,8 @@ export const {
   addEditorWaypoint,
   removeEditorWaypoint,
   clearEditorWaypoints,
+  setPendingWaypointFromMap,
+  clearPendingWaypointFromMap,
   // Applied actions
   setAppliedWaypoints,
   applyEditorWaypoints,

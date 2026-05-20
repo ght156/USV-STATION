@@ -296,6 +296,10 @@ A concise listing of available ROS 2 topics and HTTP endpoints.
 
 - *File upload*: You can upload waypoints from a TXT file.
 
+- *Map pick (Tianditu / Cesium)*: With **Waypoint Editor** open, hold **Shift** and **left-click** on the globe/imagery to fill **latitude / longitude** in the editor (WGS84 from screen pick + terrain/ellipsoid). Edit if needed → **Add** → **Save** / **Apply to Map** as usual.
+
+- **Cancel Nav** (Mission panel): Sends `POST /api/cancel_navigation` → backend publishes one `std_msgs/msg/Empty` on **`MISSION_BRIDGE_CANCEL_TOPIC`** (default **`/gcs_mission/cancel`**) so **`mission_bridge`** cancels FollowWaypoints and clears buffers — then edit waypoints / **Apply** / **Start Mission** again. **Backend terminal must `source …/ROS/setup.bash` so `ros2` is on PATH.**
+
 - *Format*: One coordinate pair per line (latitude,longitude).
 
 - Example:

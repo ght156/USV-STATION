@@ -35,3 +35,7 @@ class ConfigService:
     def get_script_timeout(self) -> int:
         """Get script execution timeout"""
         return self.settings.SCRIPT_TIMEOUT
+
+    def get_mission_bridge_cancel_topic(self) -> str:
+        """ROS2 topic for mission_bridge Empty cancel (matches launch mission_cancel_topic)"""
+        return str(self.settings.MISSION_BRIDGE_CANCEL_TOPIC).strip()

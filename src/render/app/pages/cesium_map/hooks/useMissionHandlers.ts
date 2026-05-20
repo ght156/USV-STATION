@@ -10,6 +10,7 @@ export const useMissionHandlers = (service: PlaneService): MissionHandlersReturn
   const { showSuccess, showError, showWarning } = useNotification()
   const [isMissionRunning, setIsMissionRunning] = useState(false)
   const [isMission2Running, setIsMission2Running] = useState(false)
+  const [isCancelNavigationSending, setIsCancelNavigationSending] = useState(false)
   const [colorCode, setColorCode] = useState('')
 
   // Handle mission execution - runs waypoint publisher mission
@@ -45,6 +46,25 @@ export const useMissionHandlers = (service: PlaneService): MissionHandlersReturn
       showError("Error occurred while running second mission!")
     } finally {
       setIsMission2Running(false)
+    }
+  }
+
+  const handleCancelNavigation = async () => {
+    setIsCancelNavigationSending(true)
+    try {
+      const result = await service.cancelNavigation()
+      if (result && result.status === "success") {
+        showSuccess(MESSAGES.CANCEL_NAV_SUCCESS)
+      } else {
+        showError(MESSAGES.CANCEL_NAV_FAILED)
+      }
+    }
+    catch (error) {
+      handleHookError(error, 'useMissionHandlers - handleCancelNavigation')
+      showError(MESSAGES.CANCEL_NAV_FAILED)
+    }
+    finally {
+      setIsCancelNavigationSending(false)
     }
   }
 
@@ -90,10 +110,12 @@ export const useMissionHandlers = (service: PlaneService): MissionHandlersReturn
   return {
     isMissionRunning,
     isMission2Running,
+    isCancelNavigationSending,
     colorCode,
     setColorCode,
     handleRunMission,
     handleRunMission2,
+    handleCancelNavigation,
     handleSaveColorCode,
     handleSaveWaypoints
   }

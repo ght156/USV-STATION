@@ -120,7 +120,9 @@ export interface CesiumMapProps {
 
 export interface MissionControlsProps {
   onRunMission: () => void;
+  onCancelNavigation: () => void;
   isMissionRunning: boolean;
+  isCancelNavigationSending?: boolean;
 }
 
 export interface WaypointTrackerProps {
@@ -154,6 +156,8 @@ export interface MissionHandlersReturn {
   setColorCode: (code: string) => void;
   handleRunMission: () => Promise<void>;
   handleRunMission2: () => Promise<void>;
+  handleCancelNavigation: () => Promise<void>;
+  isCancelNavigationSending: boolean;
   handleSaveColorCode: () => Promise<void>;
   handleSaveWaypoints: (waypoints: Waypoint[]) => Promise<any>;
 }

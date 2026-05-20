@@ -66,6 +66,10 @@ class PlaneService extends BaseService {
     return this.post(APIEndpoints.RUN_MISSION2);
   }
 
+  async cancelNavigation(): Promise<APIResponse | null> {
+    return this.post(APIEndpoints.CANCEL_NAVIGATION, {});
+  }
+
   // Save color code via storage service
   async saveColorCode(colorCode: string): Promise<APIResponse | null> {
     const formData = new FormData();
