@@ -27,7 +27,7 @@ _WAYPOINT_QOS = QoSProfile(
 class WaypointPublisher(Node):
     def __init__(self, payload: dict):
         super().__init__("waypoint_publisher")
-        self.publisher_ = self.create_publisher(String, "waypoint", _WAYPOINT_QOS)
+        self.publisher_ = self.create_publisher(String, "/waypoint", _WAYPOINT_QOS)
         self._payload = payload
         self._published = False
         self.timer = self.create_timer(0.15, self._timer_callback)

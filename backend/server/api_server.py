@@ -110,11 +110,14 @@ class APIServer:
             nav2_data = self.data_store.get_nav2_data().get("nav2_plan", {"poses": [], "pose_count": 0})
             
             if not nav2_data.get("poses"):
-                raise HTTPException(
-                    status_code=204,
-                    detail="No Nav2 plan data available from ROS2"
-                )
-            
+                return {
+                    "poses": [],
+                    "pose_count": 0,
+                    "available": False,
+                    "message": "No Nav2 plan data available from ROS2",
+                }
+
+            nav2_data["available"] = True
             return nav2_data
         
         @self.app.get("/api/all_telemetry")

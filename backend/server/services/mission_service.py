@@ -162,6 +162,12 @@ class MissionService:
                     self._set_state("FAILED", last_error=stderr[-200:])
                 else:
                     print(f"[Waypoint mission] completed")
+                    self._set_state(
+                        "COMPLETED",
+                        current_waypoint_index=len(waypoints) if waypoints else 0,
+                        total_waypoints=len(waypoints) if waypoints else 0,
+                        last_error=None,
+                    )
             except subprocess.TimeoutExpired:
                 print(f"[Waypoint mission] timeout ({timeout}s), killing …")
                 try:
@@ -222,7 +228,7 @@ class MissionService:
             raise RuntimeError(tail or f"cancel publisher exited {proc.returncode}")
 
         self._set_state(
-            "CANCEL_REQUESTED",
+            "CANCELLED",
             current_mission_id=None,
             current_waypoint_index=0,
             total_waypoints=0,
@@ -233,7 +239,7 @@ class MissionService:
             "status": "success",
             "message": "cancel published",
             "topic": topic,
-            "state": "CANCEL_REQUESTED",
+            "state": "CANCELLED",
         }
 
     # ------------------------------------------------------------------
