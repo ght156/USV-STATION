@@ -18,7 +18,7 @@ class MissionService:
     are exposed via ``/api/mission_status`` so the frontend can poll progress.
     """
 
-    VALID_STATES = {"IDLE", "RUNNING", "COMPLETED", "FAILED", "CANCEL_REQUESTED"}
+    VALID_STATES = {"IDLE", "RUNNING", "COMPLETED", "FAILED", "CANCELLED"}
 
     def __init__(self, config_service: ConfigService):
         self.config_service = config_service
