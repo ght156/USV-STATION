@@ -1,71 +1,154 @@
+/* 核心容器：采用当下流行的半透明毛玻璃科技感设计 */
 .mission-controls {
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.8);
-  padding: 15px;
+  width: 100%;
+  background: rgba(18, 24, 38, 0.85); /* 深色科技蓝底色 */
+  backdrop-filter: blur(12px);         /* 毛玻璃效果 */
+  -webkit-backdrop-filter: blur(12px);
+  padding: 20px;
+  border-radius: 12px;
+  color: #e2e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-width: 320px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.3s ease;
+}
+
+/* 顶部状态看板区 */
+.mission-controls__status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 10px 14px;
   border-radius: 8px;
-  color: white;
-  font-family: monospace;
+  margin-bottom: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.mission-controls__status-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+/* 状态徽章与呼吸灯动效 */
+.mission-controls__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
   font-size: 12px;
-  min-width: 300px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
-.mission-controls__header {
-  margin-top: 0;
-  margin-bottom: 15px;
-  font-size: 14px;
-  font-weight: bold;
+/* 呼吸指示灯 */
+.mission-controls__badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  display: inline-block;
+  animation: pulse 1.8s infinite ease-in-out;
 }
 
+@keyframes pulse {
+  0% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0.4; transform: scale(0.9); }
+}
+
+/* 元信息区：任务ID与控制台同步状态 */
+.mission-controls__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 18px;
+  padding: 0 4px;
+}
+
+.mission-controls__id {
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.mission-controls__sync-warning {
+  font-size: 11px;
+  color: #f59e0b;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 动作按钮行：采用 2:1 的不对称宽度，突出主干操作 */
 .mission-controls__row {
   display: flex;
-  gap: 10px;
-  align-items: stretch;
-}
-
-.mission-controls__hint {
-  margin: 12px 0 0;
-  font-size: 11px;
-  line-height: 1.35;
-  color: rgba(255, 255, 255, 0.75);
+  gap: 12px;
+  align-items: center;
 }
 
 .mission-controls__button {
-  flex: 1;
-  padding: 10px;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: bold;
+  font-size: 14px;
+  font-weight: 600;
   color: white;
-}
-
-.mission-controls__button--start {
-  background-color: #238636;
-}
-
-.mission-controls__button--start:hover:not(:disabled) {
-  background-color: #2ea043;
-}
-
-.mission-controls__button--start:disabled,
-.mission-controls__button--start.mission-controls__button--running {
-  background-color: #484f58;
-  cursor: not-allowed;
-}
-
-.mission-controls__button--cancel {
-  background-color: #c08400;
-}
-
-.mission-controls__button--cancel:hover:not(:disabled) {
-  background-color: #daa520;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
 }
 
 .mission-controls__button:disabled {
-  opacity: 0.65;
+  opacity: 0.4;
   cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+/* 启动任务按钮（主按钮，占 65% 宽度） */
+.mission-controls__button--start {
+  flex: 2;
+  background: linear-gradient(135deg, #2ea043 0%, #238636 100%);
+  box-shadow: 0 4px 12px rgba(46, 160, 67, 0.3);
+}
+
+.mission-controls__button--start:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(46, 160, 67, 0.4);
+  background: linear-gradient(135deg, #34b34a 0%, #26943c 100%);
+}
+
+/* 取消导航按钮（强警示色，占 35% 宽度） */
+.mission-controls__button--cancel {
+  flex: 1;
+  background: linear-gradient(135deg, #f85149 0%, #da3633 100%);
+  box-shadow: 0 4px 12px rgba(218, 54, 51, 0.2);
+}
+
+.mission-controls__button--cancel:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(218, 54, 51, 0.3);
+  background: linear-gradient(135deg, #fa625a 0%, #e03b37 100%);
+}
+
+/* 底部错误提示信息槽 */
+.mission-controls__error-panel {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(248, 81, 73, 0.1);
+  border-left: 3px solid #f85149;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #ff7b72;
+  line-height: 1.4;
 }

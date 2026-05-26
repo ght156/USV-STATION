@@ -50,25 +50,24 @@ class TelemetrySubscriber(Node):
             self.data_store.update_cmd_vel,
             10
         )
-        """
-        self.armed_subscription = self.create_subscription(
-            BoolMsg, 
-            'telemetry/armed', 
-            self.data_store.update_armed, 
+        from mavros_msgs.msg import State as MavrosState
+        self.mavros_state_sub = self.create_subscription(
+            MavrosState,
+            '/mavros/state',
+            self.data_store.update_mavros_state,
             10
         )
-        
-        self.mode_subscription = self.create_subscription(
-            StringMsg, 
-            'telemetry/mode', 
-            self.data_store.update_mode, 
-            10
-        )
-        """
         self.nav2_plan_subscription = self.create_subscription(
             Path,
             '/plan',
             self.data_store.update_nav2_plan,
+            10
+        )
+
+        self.mission_bridge_state_sub = self.create_subscription(
+            StringMsg,
+            '/mission_bridge/state',
+            self.data_store.update_mission_bridge_state,
             10
         )
     
@@ -79,6 +78,6 @@ class TelemetrySubscriber(Node):
         self.get_logger().info(" Odometry: /odometry/filtered")
         self.get_logger().info(" GPS: /gps/fixed_cov")
         self.get_logger().info(" Velocity: /cmd_vel_nav")
-        #self.get_logger().info(" Armed: telemetry/armed")
-        #self.get_logger().info(" Mode: telemetry/mode")
+        self.get_logger().info(" MAVROS State: /mavros/state (armed, mode, connected)")
         self.get_logger().info(" Nav2 Plan: /plan")
+        self.get_logger().info(" Mission Bridge State: /mission_bridge/state")

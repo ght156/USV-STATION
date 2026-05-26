@@ -32,7 +32,7 @@ def main(args=None):
     storage_service = StorageService(config_service)
     print("✅ StorageService created")
     
-    mission_service = MissionService(config_service)
+    mission_service = MissionService(config_service, data_store=data_store)
     print("✅ MissionService created")
     
     rclpy.init()
@@ -67,6 +67,8 @@ def main(args=None):
         print("   🛰️  GPS: /gps/fixed_cov")
         print("   🚀 Velocity: /cmd_vel_nav (Nav2 controller; smoothed: /cmd_vel)")
         print("   🗺️  Nav2 Plan: /plan")
+        print("   🛰️  MAVROS State: /mavros/state (connected, armed, mode)")
+        print("   📡 Mission Bridge State: /mission_bridge/state")
         print("\n⏹️  Press Ctrl+C to stop...\n")
         
         uvicorn.run(app, host=Settings.HOST, port=Settings.PORT, log_level="info")

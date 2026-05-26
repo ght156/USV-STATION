@@ -1,15 +1,11 @@
 .extra-controls {
-  position: absolute;
-  top: 180px;
-  left: 20px;
-  z-index: 1000;
+  width: 100%;
   background: rgba(0, 0, 0, 0.8);
   padding: 15px;
   border-radius: 8px;
   color: white;
   font-family: monospace;
   font-size: 12px;
-  width: 280px;
   box-sizing: border-box;
 }
 

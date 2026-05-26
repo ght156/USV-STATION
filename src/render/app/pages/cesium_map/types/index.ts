@@ -21,6 +21,8 @@ export interface MissionStatus {
   current_index: number;
   total: number;
   last_error: string | null;
+  /** Nav2-side state from mission_bridge (IDLE/RUNNING/COMPLETED/FAILED), authoritative for execution */
+  ros_state?: string;
 }
 
 export interface IMUData {
@@ -57,6 +59,12 @@ export interface ArmedStatus {
 }
 
 export interface ModeStatus {
+  mode: string;
+}
+
+export interface MavrosStatus {
+  connected: boolean;
+  armed: boolean;
   mode: string;
 }
 

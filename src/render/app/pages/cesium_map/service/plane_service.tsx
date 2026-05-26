@@ -7,6 +7,7 @@ import {
   AngularZ,
   ArmedStatus,
   ModeStatus,
+  MavrosStatus,
   APIResponse,
   Waypoint,
   WaypointsRequest,
@@ -60,6 +61,11 @@ class PlaneService extends BaseService {
   // Get mission status from mission service
   async getMissionStatus(): Promise<MissionStatus | null> {
     return this.get<MissionStatus>(APIEndpoints.MISSION_STATUS);
+  }
+
+  // Get MAVROS connection state (connected, armed, mode) from /mavros/state
+  async getMavrosStatus(): Promise<MavrosStatus | null> {
+    return this.get<MavrosStatus>(APIEndpoints.MAVROS_STATUS);
   }
 
   // Run waypoint mission via mission service — carries waypoints directly

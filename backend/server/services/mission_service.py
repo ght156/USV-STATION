@@ -20,12 +20,14 @@ class MissionService:
 
     VALID_STATES = {"IDLE", "RUNNING", "DISPATCHED", "COMPLETED", "FAILED", "CANCELLED"}
 
-    def __init__(self, config_service: ConfigService):
+    def __init__(self, config_service: ConfigService, data_store=None):
         self.config_service = config_service
+        self._data_store = data_store
         self._waypoint_proc: Optional[subprocess.Popen] = None
         self._color_proc: Optional[subprocess.Popen] = None
         self._proc_lock = threading.Lock()
         self._state_lock = threading.Lock()
+        self._dispatch_watchdog_timer: Optional[threading.Timer] = None
 
         # mission status tracking
         self.current_mission_id: Optional[str] = None
@@ -46,6 +48,31 @@ class MissionService:
             for k, v in kwargs.items():
                 if hasattr(self, k):
                     setattr(self, k, v)
+
+    def _cancel_dispatch_watchdog(self) -> None:
+        if self._dispatch_watchdog_timer is not None:
+            self._dispatch_watchdog_timer.cancel()
+            self._dispatch_watchdog_timer = None
+
+    def _dispatch_watchdog_cb(self) -> None:
+        """If still DISPATCHED after 5 s and mission_bridge hasn't responded, reset to IDLE."""
+        with self._state_lock:
+            if self.current_mission_state != "DISPATCHED":
+                return
+        # Check if mission_bridge sent any state since dispatch
+        ros_responded = False
+        if self._data_store is not None:
+            ms = self._data_store.get_core_data().get("mission_bridge_state")
+            ros_responded = bool(ms)
+        if not ros_responded:
+            print("[Waypoint mission] no mission_bridge response — resetting to IDLE")
+            self._set_state(
+                "IDLE",
+                current_mission_id=None,
+                current_waypoint_index=0,
+                total_waypoints=0,
+                last_error="No response from mission_bridge",
+            )
 
     def get_mission_status(self) -> Dict[str, Any]:
         with self._state_lock:
@@ -169,6 +196,11 @@ class MissionService:
                         total_waypoints=len(waypoints) if waypoints else 0,
                         last_error=None,
                     )
+                    # Watchdog: if mission_bridge doesn't respond within 5 s, reset to IDLE
+                    self._cancel_dispatch_watchdog()
+                    self._dispatch_watchdog_timer = threading.Timer(5.0, self._dispatch_watchdog_cb)
+                    self._dispatch_watchdog_timer.daemon = True
+                    self._dispatch_watchdog_timer.start()
             except subprocess.TimeoutExpired:
                 print(f"[Waypoint mission] timeout ({timeout}s), killing …")
                 try:

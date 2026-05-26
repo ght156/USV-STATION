@@ -1,5 +1,6 @@
 import threading
 import math
+import time
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Imu, NavSatFix
 from nav_msgs.msg import Odometry, Path
@@ -8,13 +9,16 @@ from std_msgs.msg import Bool as BoolMsg
 
 class TelemetryDataStore:
     """Telemetry data store for handling ROS message processing"""
-    
+
+    GPS_STALE_SEC = 3.0
+    MISSION_STATE_STALE_SEC = 5.0
+
     def __init__(self):
         """Initialize telemetry data store with thread-safe data structures"""
         self.core_lock = threading.Lock()
         self.nav2_lock = threading.Lock()
         self.status_lock = threading.Lock()
-        
+
         self.imu_data = {}
         self.odom_data = {}
         self.linear_x_data = {}
@@ -23,6 +27,12 @@ class TelemetryDataStore:
         self.armed_data = {}
         self.mode_data = {}
         self.nav2_plan_data = {}
+        self.mavros_status = {}
+        self.mission_bridge_state_data = {}
+
+        # Timestamps for staleness detection
+        self._gps_last_ts = 0.0
+        self._mission_bridge_last_ts = 0.0
 
     def update_imu(self, msg: Imu):
         """Update IMU data with quaternion to Euler angle conversion"""
@@ -81,6 +91,7 @@ class TelemetryDataStore:
     def update_gps(self, msg: NavSatFix):
         """Update GPS data with location coordinates and fix status"""
         with self.core_lock:
+            self._gps_last_ts = time.time()
             self.gps_data = {
                 "gps": {
                     "latitude": msg.latitude,
@@ -92,15 +103,17 @@ class TelemetryDataStore:
                 }
             }
 
-    def update_armed(self, msg: BoolMsg):
-        """Update armed status data"""
+    def update_mavros_state(self, msg):
+        """Update armed/mode/connected from /mavros/state (real boat only).
+        In simulation this topic doesn't exist — defaults persist."""
         with self.status_lock:
-            self.armed_data = {"armed": msg.data}
-
-    def update_mode(self, msg: StringMsg):
-        """Update mode status data"""
-        with self.status_lock:
-            self.mode_data = {"mode": msg.data}
+            self.armed_data = {"armed": msg.armed}
+            self.mode_data = {"mode": msg.mode}
+            self.mavros_status = {
+                "connected": msg.connected,
+                "armed": msg.armed,
+                "mode": msg.mode,
+            }
 
     def update_nav2_plan(self, msg: Path):
         """Update Nav2 plan data with waypoint poses"""
@@ -141,6 +154,12 @@ class TelemetryDataStore:
                 print(f"Nav2 plan parse error: {e}")
                 self.nav2_plan_data = {"nav2_plan": {"poses": [], "pose_count": 0}}
 
+    def update_mission_bridge_state(self, msg: StringMsg):
+        """Update mission bridge state (IDLE/RUNNING/COMPLETED/FAILED from Nav2 side)"""
+        with self.core_lock:
+            self._mission_bridge_last_ts = time.time()
+            self.mission_bridge_state_data = {"mission_bridge_state": msg.data}
+
     def get_core_data(self):
         """Get core telemetry data (IMU, GPS, velocity, odometry)"""
         with self.core_lock:
@@ -153,11 +172,12 @@ class TelemetryDataStore:
             }
     
     def get_status_data(self):
-        """Get status data (armed status, mode)"""
+        """Get status data (armed status, mode, mavros connection)"""
         with self.status_lock:
             return {
                 **self.armed_data,
-                **self.mode_data
+                **self.mode_data,
+                **self.mavros_status,
             }
     
     def get_nav2_data(self):

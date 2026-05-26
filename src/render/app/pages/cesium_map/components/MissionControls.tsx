@@ -2,6 +2,15 @@ import React from 'react'
 import { MissionControlsProps } from '../types'
 import './MissionControls.css'
 
+const STATE_LABELS: Record<string, string> = {
+  IDLE: 'IDLE',
+  RUNNING: 'RUNNING',
+  DISPATCHED: 'DISPATCHED',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+}
+
 export const MissionControls: React.FC<MissionControlsProps> = ({
   onRunMission,
   onCancelNavigation,
@@ -10,63 +19,78 @@ export const MissionControls: React.FC<MissionControlsProps> = ({
   appliedWaypoints,
   missionStatus,
 }) => {
-  const state = missionStatus?.state ?? 'IDLE'
+  const gcsState = missionStatus?.state ?? 'IDLE'
+  const rosState = missionStatus?.ros_state
+  const displayState = rosState || gcsState
+
+  // 状态颜色映射映射到现代 UI 的变量中
   const stateColors: Record<string, string> = {
-    IDLE: '#666',
-    RUNNING: '#238636',
-    DISPATCHED: '#1f6feb',
-    COMPLETED: '#2ea043',
-    FAILED: '#da3633',
-    CANCELLED: '#c08400',
+    IDLE: '#475569',
+    RUNNING: '#22c55e',
+    DISPATCHED: '#3b82f6',
+    COMPLETED: '#10b981',
+    FAILED: '#ef4444',
+    CANCELLED: '#f59e0b',
   }
+
+  const currentBadgeColor = stateColors[displayState] || '#64748b'
 
   return (
     <div className="mission-controls">
+      {/* 1. 顶层状态看板区 - 第一眼就能看清船在干什么 */}
+      <div className="mission-controls__status-banner">
+        <span className="mission-controls__status-label">USV STATE</span>
+        <span 
+          className="mission-controls__badge" 
+          style={{ color: currentBadgeColor, backgroundColor: `${currentBadgeColor}15` }}
+        >
+          {STATE_LABELS[displayState] || displayState}
+        </span>
+      </div>
+
+      {/* 2. 简介与元数据区 - 弱化长文本和次要编号 */}
+      <div className="mission-controls__meta">
+        {missionStatus?.mission_id && (
+          <span className="mission-controls__id">
+            Mission ID: #{missionStatus.mission_id.slice(-8)}
+          </span>
+        )}
+        
+        {/* 当 ROS 状态与 GCS 地面站本地状态不一致时才弹出警告提示 */}
+        {rosState && rosState !== gcsState && (
+          <div className="mission-controls__sync-warning">
+            ⚠️ Syncing (GCS: {STATE_LABELS[gcsState] || gcsState})
+          </div>
+        )}
+      </div>
+
+      {/* 3. 动作操作按钮区 - 主次分明，视觉宽度调整为不平分 */}
       <div className="mission-controls__row">
         <button
           type="button"
           onClick={() => void onRunMission(appliedWaypoints)}
           disabled={isMissionRunning}
-          className={`mission-controls__button mission-controls__button--start ${isMissionRunning ? 'mission-controls__button--running' : ''}`}
+          className={`mission-controls__button mission-controls__button--start`}
         >
-          {isMissionRunning ? 'Mission Running…' : 'Start Mission'}
+          {isMissionRunning ? 'Mission Active' : '⚡ Dispatch Mission'}
         </button>
+
         <button
           type="button"
           onClick={() => void onCancelNavigation()}
           disabled={isCancelNavigationSending}
           className="mission-controls__button mission-controls__button--cancel"
         >
-          {isCancelNavigationSending ? 'Sending…' : 'Cancel Nav'}
+          {isCancelNavigationSending ? 'Halting…' : '🛑 Cancel'}
         </button>
       </div>
-      <div className="mission-controls__status" style={{ marginTop: 10, fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontWeight: 'bold' }}>State:</span>
-        <span style={{
-          display: 'inline-block',
-          padding: '2px 8px',
-          borderRadius: 3,
-          background: stateColors[state] || '#666',
-          color: '#fff',
-          fontWeight: 'bold',
-          fontSize: 11,
-        }}>
-          {state}
-        </span>
-        {missionStatus?.mission_id && (
-          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10 }}>
-            #{missionStatus.mission_id.slice(-8)}
-          </span>
-        )}
-      </div>
-      {state === 'FAILED' && missionStatus?.last_error && (
-        <div style={{ marginTop: 6, fontSize: 10, color: '#f85149' }}>
-          {missionStatus.last_error.slice(-120)}
+
+      {/* 4. 底部错误诊断反馈（条件渲染） */}
+      {displayState === 'FAILED' && missionStatus?.last_error && (
+        <div className="mission-controls__error-panel">
+          <strong>Error:</strong> {missionStatus.last_error}
         </div>
       )}
-      <p className="mission-controls__hint">
-        Cancel stops the current waypoint mission (ROS). Then edit / Apply / Start Mission again.
-      </p>
     </div>
   )
 }

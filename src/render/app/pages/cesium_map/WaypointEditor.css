@@ -1,237 +1,240 @@
+/* ==========================================================================
+   🎨 航点编辑器面板 - 现代毛玻璃科技感设计
+   ========================================================================== */
 .waypoint-editor-container {
-  position: absolute;
-  bottom: 80px;
-  left: 20px;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  font-family: monospace;
+  /* ❌ 彻底摒弃 position: absolute; bottom: 80px; left: 20px; 绝对定位，交由侧边栏自动排列 */
+  width: 100%;
+  background: rgba(18, 24, 38, 0.85); /* 深色调 */
+  backdrop-filter: blur(12px);         /* 毛玻璃特效 */
+  -webkit-backdrop-filter: blur(12px);
+  color: #e2e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 12px;
-  padding: 15px;
-  border-radius: 8px;
-  min-width: 300px;
-  max-width: 500px;
-  max-height: 80vh;
-  overflow-y: auto;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  max-height: 400px; /* 控制表格展开区域的高度 */
+  display: flex;
+  flex-direction: column;
 }
 
 .waypoint-editor-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
 }
 
 .waypoint-editor-header h2 {
   margin: 0;
-  color: white;
-  font-size: 16px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .waypoint-editor-close-button {
   background: none;
   border: none;
-  color: white;
+  color: #94a3b8;
   font-size: 20px;
   cursor: pointer;
   padding: 0;
-  width: 25px;
-  height: 25px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: color 0.2s;
 }
 
+.waypoint-editor-close-button:hover {
+  color: #f85149;
+}
+
+/* 表格区域自适应滚动 */
 .waypoint-editor-list-container {
-  max-height: 150px;
+  max-height: 160px;
   overflow-y: auto;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 10px;
-  margin-bottom: 15px;
-  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  margin-bottom: 10px;
 }
 
-.waypoint-editor-waypoint-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 5px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+.waypoint-editor-empty {
+  text-align: center;
+  padding: 20px 10px;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.waypoint-editor-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+}
+
+.waypoint-editor-table th {
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
+  text-align: left;
+  padding: 6px 8px;
+  font-weight: 600;
+  font-family: sans-serif;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.waypoint-editor-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #cbd5e1;
 }
 
 .waypoint-editor-remove-button {
-  background: #e74c3c;
-  color: white;
+  background: transparent;
   border: none;
-  padding: 3px 8px;
-  border-radius: 4px;
+  color: #64748b;
+  font-size: 16px;
   cursor: pointer;
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  transition: all 0.2s;
 }
 
-.waypoint-editor-form-container {
+.waypoint-editor-remove-button:hover {
+  background: rgba(248, 81, 73, 0.15);
+  color: #f85149;
+}
+
+/* 工具栏（导入、清空） */
+.waypoint-editor-toolbar {
   display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.waypoint-editor-file-button {
+  flex: 1;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.waypoint-editor-file-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
 }
 
 .waypoint-editor-map-hint {
-  margin: 0 0 12px;
-  padding: 8px;
-  border-left: 3px solid rgba(93, 173, 226, 0.9);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.9);
+  margin: 0 0 10px 0;
   font-size: 11px;
-  line-height: 1.35;
+  color: #94a3b8;
+  line-height: 1.4;
+  background: rgba(59, 130, 246, 0.08);
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+/* 输入表单行 */
+.waypoint-editor-form-container {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
 }
 
 .waypoint-editor-input {
   flex: 1;
-  padding: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  font-size: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: #ffffff;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  min-width: 0; /* 确保不撑爆 flex */
+  transition: border-color 0.2s;
+}
+
+.waypoint-editor-input:focus {
+  outline: none;
+  border-color: #3b82f6;
 }
 
 .waypoint-editor-add-button {
-  background: #27ae60;
+  padding: 6px 12px;
+  background: #3b82f6;
   color: white;
   border: none;
-  padding: 8px 15px;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.waypoint-editor-button-group {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.waypoint-editor-file-button {
-  background: #3498db;
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.waypoint-editor-control-group {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.waypoint-editor-apply-button {
-  background: #f39c12;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-}
-
-.waypoint-editor-no-waypoints {
-  color: rgba(255, 255, 255, 0.7);
-  font-style: italic;
-  text-align: center;
-  padding: 20px 0;
-}
-
-
-@media (max-width: 768px) {
-  .waypoint-editor-container {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 90vw;
-    max-width: none;
-  }
-  
-  .waypoint-editor-form-container {
-    flex-direction: column;
-    gap: 5px;
-  }
-  
-  .waypoint-editor-button-group {
-    flex-direction: column;
-    gap: 10px;
-  }
-}
-
-.waypoint-editor-remove-button:hover {
-  background: #c0392b;
+  font-weight: 600;
+  transition: background 0.2s;
 }
 
 .waypoint-editor-add-button:hover {
-  background: #229954;
+  background: #2563eb;
 }
 
-.waypoint-editor-file-button:hover {
-  background: #2980b9;
-}
-
-.waypoint-editor-apply-button:hover {
-  background: #e67e22;
-}
-
-/* Focus effects */
-.waypoint-editor-input:focus {
-  outline: none;
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
-}
-
-/* Disabled state */
-.waypoint-editor-file-button:disabled {
-  background: #95a5a6;
-  cursor: not-allowed;
-}
-
-.waypoint-editor-add-button:disabled {
-  background: #95a5a6;
-  cursor: not-allowed;
-}
-
-.waypoint-editor-load-container {
+/* 底部行动主按钮行（不平分设计，突出Apply） */
+.waypoint-editor-action-row {
   display: flex;
   gap: 10px;
-  margin-bottom: 15px;
 }
 
-.waypoint-editor-load-button {
-  background: #3498db;
-  color: white;
+.waypoint-editor-action-btn {
   border: none;
-  padding: 8px 15px;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 12px;
-  white-space: nowrap;
+  font-weight: 600;
+  color: white;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.waypoint-editor-action-btn--save {
   flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.waypoint-editor-load-button:hover {
-  background: #2980b9;
+.waypoint-editor-action-btn--save:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
 }
 
-.waypoint-editor-load-button:disabled {
-  background: #95a5a6;
-  cursor: not-allowed;
+.waypoint-editor-action-btn--apply {
+  flex: 1.5; /* 更宽 */
+  background: linear-gradient(135deg, #ea580c 0%, #d97706 100%);
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.2);
 }
 
-.waypoint-editor-file-input {
-  display: none;
+.waypoint-editor-action-btn--apply:hover {
+  background: linear-gradient(135deg, #f97316 0%, #eab308 100%);
+  transform: translateY(-0.5px);
+}
+
+.waypoint-editor-error {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #f85149;
 }

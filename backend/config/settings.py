@@ -22,7 +22,7 @@ class Settings:
     PORT = int(os.environ.get('PORT', 5002))
     
     # Mission settings
-    SCRIPT_TIMEOUT = 300  # seconds
+    SCRIPT_TIMEOUT = 10  # seconds (publisher exits <2 s; longer = ROS unreachable)
     # 与 mission_bridge mission_cancel_topic 对齐：后端向该 ROS 话题发布一发 Empty
     MISSION_BRIDGE_CANCEL_TOPIC = os.environ.get(
         "MISSION_BRIDGE_CANCEL_TOPIC",

@@ -27,7 +27,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onClose, onSaveWaypoint
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Get state from Redux store - single source of truth
+  // 订阅 Redux 状态
   const isOpen = useSelector((state: RootState) => state.editor.isOpen);
   const editorWaypoints = useSelector((state: RootState) => state.waypoints.editorWaypoints);
   const isLoading = useSelector((state: RootState) => state.waypoints.isLoading);
@@ -35,158 +35,175 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onClose, onSaveWaypoint
   
   const [lat, setLat] = useState('');
   const [lon, setLon] = useState('');
-  const wasEditorOpenRef = useRef(false);
 
   const pendingWaypointFromMap = useSelector(
-    (state: RootState) => state.waypoints.pendingWaypointFromMap,
+    (state: RootState) => state.waypoints.pendingWaypointFromMap
   );
 
-  /** 面板从关→开：清空输入框，避免沿用上次编辑内容 */
   useEffect(() => {
-    if (isOpen && !wasEditorOpenRef.current) {
-      setLat('');
-      setLon('');
+    if (pendingWaypointFromMap) {
+      setLat(pendingWaypointFromMap.latitude.toFixed(7));
+      setLon(pendingWaypointFromMap.longitude.toFixed(7));
+      dispatch(clearPendingWaypointFromMap());
     }
-    wasEditorOpenRef.current = isOpen;
-  }, [isOpen]);
+  }, [pendingWaypointFromMap, dispatch]);
 
-  /** 地图上拾取的经纬度：填表（仅面板打开时消费） */
-  useEffect(() => {
-    if (!isOpen || !pendingWaypointFromMap) return;
-    setLat(String(pendingWaypointFromMap.latitude));
-    setLon(String(pendingWaypointFromMap.longitude));
-    dispatch(clearPendingWaypointFromMap());
-  }, [pendingWaypointFromMap, dispatch, isOpen]);
-  
   if (!isOpen) return null;
 
   const handleAddWaypoint = () => {
-    const latitude = parseFloat(lat); const longitude = parseFloat(lon);
-    if (isNaN(latitude) || isNaN(longitude)) { 
-      showWarning('Please enter valid latitude and longitude values.'); 
-      return; 
-    }
-    const newWaypoint: Waypoint = { 
-      id: Date.now(), 
-      latitude, 
-      longitude 
-    };
-    // Use editor waypoint action - doesn't affect map immediately
-    dispatch(addEditorWaypoint(newWaypoint)); 
-    setLat(''); setLon('');
-  };
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lon);
 
-  const handleRemoveWaypoint = (id: string | number) => { 
-    // Use editor waypoint action
-    dispatch(removeEditorWaypoint(id)); 
+    if (isNaN(latitude) || isNaN(longitude)) {
+      showError('Please enter valid coordinates');
+      return;
+    }
+
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      showError('Coordinates out of range');
+      return;
+    }
+
+    const newWp: Waypoint = { latitude, longitude };
+    dispatch(addEditorWaypoint(newWp));
+    setLat('');
+    setLon('');
   };
 
   const handleSaveToBackend = async () => {
-    if (!onSaveWaypoints) {
-      showError('waypoint save function not found.');
-      return;
-    }
-    
     if (editorWaypoints.length === 0) {
-      showWarning('No waypoints to save.');
+      showWarning('No waypoints to save');
       return;
     }
-
-    // Use Redux for loading state management
-    dispatch(setWaypointsLoading(true));
-    dispatch(setWaypointsError(null));
     
+    dispatch(setWaypointsLoading(true));
     try {
-      await onSaveWaypoints(editorWaypoints);
-      showSuccess('Waypoints successfully saved');
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      dispatch(setWaypointsError(errorMessage));
-      showError(`Save error: ${errorMessage}`);
+      if (onSaveWaypoints) {
+        await onSaveWaypoints(editorWaypoints);
+      } else {
+        const payload = {
+          waypoints: editorWaypoints,
+          mission_name: "yildizusv_mission"
+        };
+        const response = await fetch('http://localhost:8000/api/save_waypoints', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      }
+      showSuccess('Waypoints saved successfully');
+    } catch (err: any) {
+      dispatch(setWaypointsError(err.message || 'Failed to save'));
+      showError(err.message || 'Failed to save waypoints');
     } finally {
       dispatch(setWaypointsLoading(false));
     }
   };
 
-  const handleLoadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleApply = () => {
+    if (editorWaypoints.length === 0) {
+      showWarning('No waypoints to apply');
+      return;
+    }
+    dispatch(applyEditorWaypoints());
+    showSuccess('Waypoints applied to operational map');
+  };
+
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    try {
-      const text = await file.text();
-      const { waypoints, errors } = parseWaypointTxt(text);
-
-      dispatch(clearEditorWaypoints());
-      
-      if (waypoints.length > 0) {
-        dispatch(setEditorWaypoints(waypoints));
-        showSuccess(`${waypoints.length} waypoints loaded successfully.`);
-      } else {
-        showWarning('No valid waypoints found.');
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      try {
+        const wps = parseWaypointTxt(text);
+        if (wps.length === 0) {
+          showWarning('No valid waypoints found in file');
+          return;
+        }
+        dispatch(setEditorWaypoints(wps));
+        showSuccess(`Imported ${wps.length} waypoints successfully`);
+      } catch (err: any) {
+        showError(`Import error: ${err.message}`);
       }
-
-      if (errors.length > 0) {
-        showWarning(`Some errors: ${errors.slice(0, 3).join('; ')}${errors.length > 3 ? '...' : ''}`);
-      }
-    } catch (error) {
-      showError('File read error.');
-    } finally {
-      e.target.value = '';
-    }
-  };
-
-  // Apply to map - move editor waypoints to applied waypoints
-  const handleApply = () => { 
-    dispatch(applyEditorWaypoints());
-    onClose(); 
+    };
+    reader.readAsText(file);
+    if (e.target) e.target.value = '';
   };
 
   return (
     <div className="waypoint-editor-container">
       <div className="waypoint-editor-header">
-        <h2>Waypoint Editor</h2>
-        <button onClick={onClose} className="waypoint-editor-close-button">✕</button>
+        <h2>🗺️ Waypoint Editor</h2>
+        <button onClick={onClose} className="waypoint-editor-close-button">×</button>
       </div>
-      
-      {error && (
-        <div className="waypoint-editor-error">
-          Error: {error}
-        </div>
-      )}
-      
+
       <div className="waypoint-editor-list-container">
-        {editorWaypoints.length === 0 ? <p className="waypoint-editor-no-waypoints">No waypoints added yet.</p> :
-          editorWaypoints.map((wp, index) => (
-            <div key={wp.id} className="waypoint-editor-waypoint-item">
-              <span>{index + 1}: Lat: {wp.latitude.toFixed(6)}, Lon: {wp.longitude.toFixed(6)}</span>
-              <button onClick={() => handleRemoveWaypoint(wp.id)} className="waypoint-editor-remove-button">Delete</button>
-            </div>
-          ))
-        }
+        {editorWaypoints.length === 0 ? (
+          <div className="waypoint-editor-empty">No coordinates listed. Use Shift+Click on base map to collect data points.</div>
+        ) : (
+          <table className="waypoint-editor-table">
+            <thead>
+              <tr>
+                <th style={{ width: '40px' }}>ID</th>
+                <th>Latitude</th>
+                <th>Longitude</th>
+                <th style={{ width: '40px' }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {editorWaypoints.map((wp, index) => (
+                <tr key={index}>
+                  <td>WP{index + 1}</td>
+                  <td>{wp.latitude.toFixed(6)}</td>
+                  <td>{wp.longitude.toFixed(6)}</td>
+                  <td>
+                    <button 
+                      onClick={() => dispatch(removeEditorWaypoint(index))}
+                      className="waypoint-editor-remove-button"
+                      title="Remove Point"
+                    >
+                      ×
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
-      
-      <div className="waypoint-editor-load-container">
+
+      <div className="waypoint-editor-toolbar">
         <button 
-          onClick={() => fileInputRef.current?.click()} 
-          className="waypoint-editor-load-button"
-          disabled={isLoading}
+          onClick={() => dispatch(clearEditorWaypoints())} 
+          disabled={editorWaypoints.length === 0}
+          className="waypoint-editor-file-button"
+          style={{ background: '#7f8c8d' }}
         >
-          Load TXT File
+          Clear All
         </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".txt"
-          onChange={handleLoadFile}
+        <button 
+          onClick={() => fileInputRef.current?.click()}
+          className="waypoint-editor-file-button"
+        >
+          Import TXT
+        </button>
+        <input 
+          type="file" 
+          accept=".txt" 
+          ref={fileInputRef} 
+          onChange={handleFileImport}
           style={{ display: 'none' }}
           className="waypoint-editor-file-input"
         />
       </div>
 
       <p className="waypoint-editor-map-hint">
-        Map pick: editor open → hold <strong>Shift</strong> and <strong>left-click</strong> the basemap →
-        lat/lon fill below →
-        optionally edit → <strong>Add</strong>, then <strong>Save</strong> / <strong>Apply to Map</strong>.
+        💡 <strong>Map pick:</strong> Hold <strong>Shift</strong> + <strong>left-click</strong> on the map to autofill coords below.
       </p>
       
       <div className="waypoint-editor-form-container">
@@ -207,19 +224,23 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onClose, onSaveWaypoint
         <button onClick={handleAddWaypoint} className="waypoint-editor-add-button">Add</button>
       </div>
       
-      <div className="waypoint-editor-button-group">
+      <div className="waypoint-editor-action-row">
         <button 
           onClick={handleSaveToBackend} 
           disabled={isLoading}
-          className="waypoint-editor-file-button"
+          className="waypoint-editor-action-btn waypoint-editor-action-btn--save"
         >
-          {isLoading ? 'Saving...' : 'Save'}
+          {isLoading ? 'Saving...' : '💾 Save Draft'}
+        </button>
+        <button 
+          onClick={handleApply} 
+          className="waypoint-editor-action-btn waypoint-editor-action-btn--apply"
+        >
+          🚀 Apply to Map
         </button>
       </div>
-      
-      <div className="waypoint-editor-control-group">
-        <button onClick={handleApply} className="waypoint-editor-apply-button">Apply to Map</button>
-      </div>
+
+      {error && <div className="waypoint-editor-error">⚠️ {error}</div>}
     </div>
   );
 };

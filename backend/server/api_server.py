@@ -71,9 +71,15 @@ class APIServer:
         
         @self.app.get("/api/gps_message")
         async def get_gps_message():
-            """Get GPS message data from telemetry store"""
-            return self.data_store.get_core_data().get("gps", {})
-        
+            """Get GPS message data from telemetry store；stale (>3s) → empty"""
+            import time
+            ds = self.data_store
+            with ds.core_lock:
+                stale = (time.time() - ds._gps_last_ts) > ds.GPS_STALE_SEC
+            if stale:
+                return {}
+            return ds.get_core_data().get("gps", {})
+
         @self.app.get("/api/imu_message")
         async def get_imu_message():
             """Get IMU message data from telemetry store"""
@@ -103,7 +109,17 @@ class APIServer:
         async def get_mode_status():
             """Get mode status from telemetry store"""
             return {"mode": self.data_store.get_status_data().get("mode", "UNKNOWN")}
-        
+
+        @self.app.get("/api/mavros_status")
+        async def get_mavros_status():
+            """Get MAVROS connection state (connected, armed, mode) from /mavros/state."""
+            ms = self.data_store.get_status_data().get("mavros_status", {})
+            return {
+                "connected": ms.get("connected", False),
+                "armed": ms.get("armed", False),
+                "mode": ms.get("mode", "UNKNOWN"),
+            }
+
         @self.app.get("/api/nav2_plan")
         async def get_nav2_plan():
             """Get Nav2 plan data from telemetry store"""
@@ -190,9 +206,20 @@ class APIServer:
 
         @self.app.get("/api/mission_status")
         async def mission_status():
-            """Return current mission state for frontend polling."""
+            """Return current mission state for frontend polling.
+            Merges GCS dispatch state with Nav2-side mission_bridge state.
+            Ros state older than 5 s is treated as stale (dropped)."""
             try:
-                return self.mission_service.get_mission_status()
+                import time
+                status = self.mission_service.get_mission_status()
+                ds = self.data_store
+                with ds.core_lock:
+                    stale = (time.time() - ds._mission_bridge_last_ts) > ds.MISSION_STATE_STALE_SEC
+                if not stale:
+                    ros_state = ds.get_core_data().get("mission_bridge_state")
+                    if ros_state:
+                        status["ros_state"] = ros_state
+                return status
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
 
