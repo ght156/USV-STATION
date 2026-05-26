@@ -50,7 +50,7 @@ class WaypointPublisher(Node):
         self._schedule_exit()
 
     def _schedule_exit(self):
-        self._exit_timer = self.create_timer(0.1, self._exit)
+        self._exit_timer = self.create_timer(1.0, self._exit)
 
     def _exit(self):
         if self._exit_timer is not None:

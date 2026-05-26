@@ -75,9 +75,9 @@ class TelemetrySubscriber(Node):
     def _log_subscribed_topics(self):
         """Log subscribed ROS2 topics"""
         self.get_logger().info(" Listening Topics:")
-        self.get_logger().info(" IMU: /imu/data_cov")
+        self.get_logger().info(" IMU: /imu/fixed_cov")
         self.get_logger().info(" Odometry: /odometry/filtered")
-        self.get_logger().info(" GPS: /gps/fix_cov")
+        self.get_logger().info(" GPS: /gps/fixed_cov")
         self.get_logger().info(" Velocity: /cmd_vel_nav")
         #self.get_logger().info(" Armed: telemetry/armed")
         #self.get_logger().info(" Mode: telemetry/mode")

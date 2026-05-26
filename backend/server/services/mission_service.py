@@ -114,6 +114,7 @@ class MissionService:
         self,
         waypoints: List[Dict[str, float]],
         mission_id: str,
+        explicit_replan: bool = True,
     ) -> Dict[str, Any]:
         """Start (or restart) the waypoint publisher with explicit waypoints.
 
@@ -127,7 +128,7 @@ class MissionService:
 
         payload_obj = {
             "mission_id": mission_id,
-            "explicit_replan": True,
+            "explicit_replan": explicit_replan,
             "waypoints": waypoints,
         }
         payload_str = json.dumps(payload_obj)

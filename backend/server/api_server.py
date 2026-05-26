@@ -156,15 +156,17 @@ class APIServer:
                         for wp in req.waypoints
                     ]
                     mission_id = req.mission_id or f"backend_{int(_time.time() * 1000)}"
+                    explicit_replan = req.explicit_replan if req is not None else True
                 else:
                     saved = self.storage_service.load_waypoints()
                     waypoints = saved.get("waypoints", [])
                     mission_id = f"backend_{int(_time.time() * 1000)}"
+                    explicit_replan = True
 
                 if not waypoints:
                     raise HTTPException(status_code=400, detail="No waypoints provided")
 
-                return self.mission_service.run_waypoint_mission(waypoints, mission_id)
+                return self.mission_service.run_waypoint_mission(waypoints, mission_id, explicit_replan)
             except HTTPException:
                 raise
             except Exception as e:
