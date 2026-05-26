@@ -1,16 +1,17 @@
 import { BaseService, APIEndpoints } from './baseService';
-import { 
-  GPSData, 
-  IMUData, 
+import {
+  GPSData,
+  IMUData,
   OdomData,
-  LinearX, 
-  AngularZ, 
-  ArmedStatus, 
-  ModeStatus, 
+  LinearX,
+  AngularZ,
+  ArmedStatus,
+  ModeStatus,
   APIResponse,
   Waypoint,
   WaypointsRequest,
-  Nav2PlanData
+  Nav2PlanData,
+  MissionStatus
 } from '../types';
 
 // USV (Unmanned Surface Vehicle) API service 
@@ -54,6 +55,11 @@ class PlaneService extends BaseService {
   // Get Nav2 plan data from telemetry store
   async getNav2Plan(): Promise<Nav2PlanData | null> {
     return this.get<Nav2PlanData>(APIEndpoints.NAV2_PLAN);
+  }
+
+  // Get mission status from mission service
+  async getMissionStatus(): Promise<MissionStatus | null> {
+    return this.get<MissionStatus>(APIEndpoints.MISSION_STATUS);
   }
 
   // Run waypoint mission via mission service — carries waypoints directly

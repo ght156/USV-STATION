@@ -113,4 +113,5 @@ export enum APIEndpoints {
   CANCEL_NAVIGATION = '/api/cancel_navigation',
   SAVE_COLOR_CODE = '/api/save_color_code',
   SAVE_WAYPOINTS = '/api/save_waypoints',
+  MISSION_STATUS = '/api/mission_status',
 }

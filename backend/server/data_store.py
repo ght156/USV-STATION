@@ -79,13 +79,16 @@ class TelemetryDataStore:
             self.angular_z_data = {"angular_z": msg.angular.z}
 
     def update_gps(self, msg: NavSatFix):
-        """Update GPS data with location coordinates"""
+        """Update GPS data with location coordinates and fix status"""
         with self.core_lock:
             self.gps_data = {
                 "gps": {
                     "latitude": msg.latitude,
                     "longitude": msg.longitude,
-                    "altitude": msg.altitude
+                    "altitude": msg.altitude,
+                    "fix_status": msg.status.status,
+                    "service": msg.status.service,
+                    "covariance_type": msg.position_covariance_type,
                 }
             }
 

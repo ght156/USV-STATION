@@ -7,6 +7,20 @@ export interface GPSData {
   latitude: number;
   longitude: number;
   timestamp: number;
+  /** NavSatFix status.status: -1=NO_FIX, 0=FIX, 1=SBAS_FIX, 2=GBAS_FIX */
+  fix_status?: number;
+  /** NavSatFix status.service bitmask: 1=GPS, 2=GLONASS, 4=COMPASS, 8=Galileo */
+  service?: number;
+  /** NavSatFix position_covariance_type: 0=UNKNOWN, 1=APPROXIMATED, 2=DIAGONAL_KNOWN, 3=KNOWN */
+  covariance_type?: number;
+}
+
+export interface MissionStatus {
+  state: 'IDLE' | 'RUNNING' | 'DISPATCHED' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  mission_id: string | null;
+  current_index: number;
+  total: number;
+  last_error: string | null;
 }
 
 export interface IMUData {
@@ -124,6 +138,7 @@ export interface MissionControlsProps {
   isMissionRunning: boolean;
   isCancelNavigationSending?: boolean;
   appliedWaypoints: Waypoint[];
+  missionStatus?: MissionStatus | null;
 }
 
 export interface WaypointTrackerProps {
@@ -161,6 +176,7 @@ export interface MissionHandlersReturn {
   isCancelNavigationSending: boolean;
   handleSaveColorCode: () => Promise<void>;
   handleSaveWaypoints: (waypoints: Waypoint[]) => Promise<any>;
+  missionStatus: MissionStatus | null;
 }
 
 export interface ReduxAction {

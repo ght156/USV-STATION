@@ -104,7 +104,8 @@ const CesiumMap = (_props: CesiumMapProps) => {
     isMissionRunning,
     isMission2Running,
     colorCode,
-    setColorCode
+    setColorCode,
+    missionStatus,
   } = useMissionHandlers(service)
 
   
@@ -157,6 +158,7 @@ const CesiumMap = (_props: CesiumMapProps) => {
         isMissionRunning={isMissionRunning}
         isCancelNavigationSending={isCancelNavigationSending}
         appliedWaypoints={appliedWaypoints}
+        missionStatus={missionStatus}
       />
       
       <ExtraControls

@@ -14,6 +14,25 @@ interface DebugPanelProps {
   distanceToTarget: number
 }
 
+const FIX_STATUS_LABELS: Record<number, string> = {
+  [-1]: 'NO FIX',
+  [0]: 'FIX',
+  [1]: 'SBAS FIX',
+  [2]: 'GBAS FIX',
+}
+
+function gpsStatusLabel(gpsData: any): string {
+  if (!gpsData) return 'No data'
+  if (gpsData.fix_status === undefined || gpsData.fix_status === null) return 'Unknown'
+  return FIX_STATUS_LABELS[gpsData.fix_status] ?? `Status ${gpsData.fix_status}`
+}
+
+function gpsStatusColor(gpsData: any): string {
+  if (!gpsData || gpsData.fix_status === undefined || gpsData.fix_status === null) return '#888'
+  if (gpsData.fix_status >= 0) return '#3fb950'
+  return '#f85149'
+}
+
 export const DebugPanel: React.FC<DebugPanelProps> = ({
   isUpdating,
   viewerReady,
@@ -26,10 +45,12 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
   currentTargetWaypoint,
   distanceToTarget
 }) => {
+  const fixLabel = gpsStatusLabel(gpsData)
+  const fixColor = gpsStatusColor(gpsData)
   return (
     <div className="debug-panel">
       <div className="debug-panel__status">
-        <strong>📡 GPS Status:</strong> {isUpdating ? '🟢 Active' : '🔴 Stopped'}
+        <strong>📡 GPS Status:</strong> <span style={{color: fixColor}}>{fixLabel}</span>{gpsData?.covariance_type !== undefined && <> (cov: {gpsData.covariance_type})</>}
       </div>
       <div className="debug-panel__status">
         <strong>🎯 Viewer Ready:</strong> {viewerReady ? '✅' : '❌'}

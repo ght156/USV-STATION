@@ -1,17 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import PlaneService from '../service/plane_service'
-import { MissionHandlersReturn, Waypoint } from '../types'
+import { MissionHandlersReturn, MissionStatus, Waypoint } from '../types'
 import { MESSAGES } from '../constants'
 import { handleHookError } from '../utils/errorHandler'
 import { useNotification } from '../services/notification.service'
 
-// Hook for managing mission execution handlers and UI state 
+// Hook for managing mission execution handlers and UI state
 export const useMissionHandlers = (service: PlaneService): MissionHandlersReturn => {
   const { showSuccess, showError, showWarning } = useNotification()
   const [isMissionRunning, setIsMissionRunning] = useState(false)
   const [isMission2Running, setIsMission2Running] = useState(false)
   const [isCancelNavigationSending, setIsCancelNavigationSending] = useState(false)
   const [colorCode, setColorCode] = useState('')
+  const [missionStatus, setMissionStatus] = useState<MissionStatus | null>(null)
 
   // Handle mission execution — sends waypoints directly in request body
   const handleRunMission = async (waypoints: Waypoint[]) => {
@@ -113,6 +114,22 @@ export const useMissionHandlers = (service: PlaneService): MissionHandlersReturn
     }
   }
 
+  // Poll mission status from backend every 2s
+  const fetchMissionStatus = useCallback(async () => {
+    try {
+      const status = await service.getMissionStatus()
+      if (status) setMissionStatus(status)
+    } catch {
+      // silently ignore — backend may not be ready
+    }
+  }, [service])
+
+  useEffect(() => {
+    fetchMissionStatus()
+    const interval = setInterval(fetchMissionStatus, 2000)
+    return () => clearInterval(interval)
+  }, [fetchMissionStatus])
+
   return {
     isMissionRunning,
     isMission2Running,
@@ -123,6 +140,7 @@ export const useMissionHandlers = (service: PlaneService): MissionHandlersReturn
     handleRunMission2,
     handleCancelNavigation,
     handleSaveColorCode,
-    handleSaveWaypoints
+    handleSaveWaypoints,
+    missionStatus,
   }
 }
