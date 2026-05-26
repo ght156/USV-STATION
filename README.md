@@ -275,7 +275,7 @@ A concise listing of available ROS 2 topics and HTTP endpoints.
 
 - `POST /api/save_color_code` - Save color code
 - `POST /api/save_waypoints` - Save waypoints
-- `POST /api/run_mission` - Start waypoint mission (burst-publishes 3× at 0.2 s then exits)
+- `POST /api/run_mission` - Start waypoint mission (one-shot publish via ``waypoint_publisher.py --payload``)
 - `POST /api/run_mission2` - Start color-code mission (same burst pattern)
 - `POST /api/cancel_navigation` - Cancel Nav2 mission (one-shot ``cancel_publisher.py``)
 
@@ -292,7 +292,7 @@ A concise listing of available ROS 2 topics and HTTP endpoints.
 
 ### Waypoint Management
 
-- *Save before sending*: Waypoints must be saved before they can be sent to the mission.
+- *Direct dispatch*: Waypoints are carried directly in the ``/api/run_mission`` request body; ``waypoints.json`` is only a fallback when no body is sent.
 
 - *Persistence*: Waypoints are stored in backend/data/waypoints.json and not cleared between sessions.
 

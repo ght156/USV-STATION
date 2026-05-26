@@ -18,7 +18,7 @@ class MissionService:
     are exposed via ``/api/mission_status`` so the frontend can poll progress.
     """
 
-    VALID_STATES = {"IDLE", "RUNNING", "COMPLETED", "FAILED", "CANCELLED"}
+    VALID_STATES = {"IDLE", "RUNNING", "DISPATCHED", "COMPLETED", "FAILED", "CANCELLED"}
 
     def __init__(self, config_service: ConfigService):
         self.config_service = config_service
@@ -161,9 +161,9 @@ class MissionService:
                     print(f"[Waypoint mission] exited {proc.returncode}: {stderr[-500:]}")
                     self._set_state("FAILED", last_error=stderr[-200:])
                 else:
-                    print(f"[Waypoint mission] completed")
+                    print(f"[Waypoint mission] dispatched")
                     self._set_state(
-                        "COMPLETED",
+                        "DISPATCHED",
                         current_waypoint_index=len(waypoints) if waypoints else 0,
                         total_waypoints=len(waypoints) if waypoints else 0,
                         last_error=None,
