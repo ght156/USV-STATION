@@ -13,11 +13,17 @@ export const useMissionHandlers = (service: PlaneService): MissionHandlersReturn
   const [isCancelNavigationSending, setIsCancelNavigationSending] = useState(false)
   const [colorCode, setColorCode] = useState('')
 
-  // Handle mission execution - runs waypoint publisher mission
-  const handleRunMission = async () => {
+  // Handle mission execution — sends waypoints directly in request body
+  const handleRunMission = async (waypoints: Waypoint[]) => {
+    if (!waypoints || waypoints.length === 0) {
+      showWarning('No waypoints to start mission')
+      return
+    }
     setIsMissionRunning(true)
     try {
-      const result = await service.runMission()
+      const missionId = `frontend_${Date.now()}`
+      const wps = waypoints.map(w => ({ latitude: w.latitude, longitude: w.longitude }))
+      const result = await service.runMission(wps, missionId)
       if (result && result.status === "success") {
         showSuccess(MESSAGES.MISSION_SUCCESS)
       } else {

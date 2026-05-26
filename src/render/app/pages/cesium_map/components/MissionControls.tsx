@@ -7,13 +7,14 @@ export const MissionControls: React.FC<MissionControlsProps> = ({
   onCancelNavigation,
   isMissionRunning,
   isCancelNavigationSending = false,
+  appliedWaypoints,
 }) => {
   return (
     <div className="mission-controls">
       <div className="mission-controls__row">
         <button
           type="button"
-          onClick={() => void onRunMission()}
+          onClick={() => void onRunMission(appliedWaypoints)}
           disabled={isMissionRunning}
           className={`mission-controls__button mission-controls__button--start ${isMissionRunning ? 'mission-controls__button--running' : ''}`}
         >

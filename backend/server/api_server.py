@@ -17,9 +17,16 @@ class Waypoint(BaseModel):
 
 
 class WaypointsRequest(BaseModel):
-    """Waypoints request data model"""
+    """Waypoints request data model (save draft / apply)"""
     waypoints: list[Waypoint]
     mission_name: str = "yildizusv_mission"
+
+
+class MissionRequest(BaseModel):
+    """Mission start request — waypoints carried directly in body."""
+    waypoints: list[Waypoint] = []
+    mission_id: str = ""
+    explicit_replan: bool = True
 
 class APIServer:
     """FastAPI server for Yildizusv telemetry system"""
@@ -133,10 +140,30 @@ class APIServer:
                 raise HTTPException(status_code=500, detail=str(e))
         
         @self.app.post("/api/run_mission")
-        async def run_mission():
-            """Run waypoint mission via mission service"""
+        async def run_mission(req: MissionRequest = None):
+            """Run waypoint mission — prefers waypoints from request body,
+            falls back to saved waypoints.json for backward compatibility."""
             try:
-                return self.mission_service.run_waypoint_mission()
+                import json
+                import time as _time
+
+                if req is not None and req.waypoints:
+                    waypoints = [
+                        {"latitude": wp.latitude, "longitude": wp.longitude}
+                        for wp in req.waypoints
+                    ]
+                    mission_id = req.mission_id or f"backend_{int(_time.time() * 1000)}"
+                else:
+                    saved = self.storage_service.load_waypoints()
+                    waypoints = saved.get("waypoints", [])
+                    mission_id = f"backend_{int(_time.time() * 1000)}"
+
+                if not waypoints:
+                    raise HTTPException(status_code=400, detail="No waypoints provided")
+
+                return self.mission_service.run_waypoint_mission(waypoints, mission_id)
+            except HTTPException:
+                raise
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
         
@@ -153,6 +180,14 @@ class APIServer:
             """Cancel Nav2 waypoint mission via mission_bridge (ROS2 Empty on cancel topic)."""
             try:
                 return self.mission_service.cancel_navigation_mission()
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.get("/api/mission_status")
+        async def mission_status():
+            """Return current mission state for frontend polling."""
+            try:
+                return self.mission_service.get_mission_status()
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
 

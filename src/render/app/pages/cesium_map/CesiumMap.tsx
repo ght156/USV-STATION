@@ -156,6 +156,7 @@ const CesiumMap = (_props: CesiumMapProps) => {
         onCancelNavigation={handleCancelNavigation}
         isMissionRunning={isMissionRunning}
         isCancelNavigationSending={isCancelNavigationSending}
+        appliedWaypoints={appliedWaypoints}
       />
       
       <ExtraControls

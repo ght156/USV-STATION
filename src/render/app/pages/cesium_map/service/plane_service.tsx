@@ -56,9 +56,14 @@ class PlaneService extends BaseService {
     return this.get<Nav2PlanData>(APIEndpoints.NAV2_PLAN);
   }
 
-  // Run waypoint mission via mission service
-  async runMission(): Promise<APIResponse | null> {
-    return this.post(APIEndpoints.RUN_MISSION);
+  // Run waypoint mission via mission service — carries waypoints directly
+  async runMission(waypoints: Array<{latitude: number; longitude: number}>, missionId?: string): Promise<APIResponse | null> {
+    const mid = missionId || `frontend_${Date.now()}`;
+    return this.post(APIEndpoints.RUN_MISSION, {
+      mission_id: mid,
+      explicit_replan: true,
+      waypoints,
+    });
   }
 
   // Run color code mission via mission service
