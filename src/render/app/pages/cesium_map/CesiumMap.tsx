@@ -39,8 +39,8 @@ const CesiumMap = (_props: CesiumMapProps) => {
   const waypointEditorOpen = useSelector((state: RootState) => state.editor.isOpen)
   const dispatch = useDispatch()
   
-  // Services
-  const service = new PlaneService()
+  // Services — useMemo 稳定引用，避免每次渲染重建导致定时器饥饿
+  const service = useMemo(() => new PlaneService(), [])
 
   // Nav2 plan state for toggle functionality
   const [showNav2Plan, setShowNav2Plan] = useState(false)
