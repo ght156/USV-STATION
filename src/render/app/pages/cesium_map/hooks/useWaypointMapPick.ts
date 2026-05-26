@@ -24,12 +24,18 @@ export function useWaypointMapPick(
 
     const cb = (click: { position: InstanceType<(typeof Cesium)['Cartesian2']> }) => {
       try {
-        let cartesian = viewer.scene.pickPosition(click.position)
+        let cartesian: any = undefined
         const ray = viewer.camera.getPickRay(click.position)
 
-        if (!Cesium.defined(cartesian) && ray)
+        // 1. globe.pick — 射线 vs 地形瓦片求交，不依赖深度缓冲，倾斜/缩放下最稳定
+        if (ray)
           cartesian = viewer.scene.globe.pick(ray, viewer.scene)
 
+        // 2. scene.pickPosition — 深度缓冲拾取（有 3D 模型时更准）
+        if (!Cesium.defined(cartesian))
+          cartesian = viewer.scene.pickPosition(click.position)
+
+        // 3. camera.pickEllipsoid — 终极兜底，纯椭球体数学解
         if (!Cesium.defined(cartesian)) {
           cartesian = viewer.camera.pickEllipsoid(
             click.position,
@@ -43,6 +49,7 @@ export function useWaypointMapPick(
         const c = Cesium.Cartographic.fromCartesian(cartesian)
         const lat = Cesium.Math.toDegrees(c.latitude)
         const lon = Cesium.Math.toDegrees(c.longitude)
+        // height 清零：USV 在水面行驶，避免地形山体高度干扰 Nav2 目标点计算
 
         if (!Number.isFinite(lat) || !Number.isFinite(lon))
           return
