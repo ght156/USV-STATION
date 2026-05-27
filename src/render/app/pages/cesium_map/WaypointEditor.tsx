@@ -64,7 +64,11 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onClose, onSaveWaypoint
       return;
     }
 
-    const newWp: Waypoint = { latitude, longitude };
+    const newWp: Waypoint = {
+      id: `wp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      latitude,
+      longitude,
+    };
     dispatch(addEditorWaypoint(newWp));
     setLat('');
     setLon('');
@@ -120,13 +124,13 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onClose, onSaveWaypoint
     reader.onload = (event) => {
       const text = event.target?.result as string;
       try {
-        const wps = parseWaypointTxt(text);
-        if (wps.length === 0) {
+        const result = parseWaypointTxt(text);
+        if (result.waypoints.length === 0) {
           showWarning('No valid waypoints found in file');
           return;
         }
-        dispatch(setEditorWaypoints(wps));
-        showSuccess(`Imported ${wps.length} waypoints successfully`);
+        dispatch(setEditorWaypoints(result.waypoints));
+        showSuccess(`Imported ${result.waypoints.length} waypoints successfully`);
       } catch (err: any) {
         showError(`Import error: ${err.message}`);
       }
@@ -162,8 +166,8 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onClose, onSaveWaypoint
                   <td>{wp.latitude.toFixed(6)}</td>
                   <td>{wp.longitude.toFixed(6)}</td>
                   <td>
-                    <button 
-                      onClick={() => dispatch(removeEditorWaypoint(index))}
+                    <button
+                      onClick={() => dispatch(removeEditorWaypoint(wp.id))}
                       className="waypoint-editor-remove-button"
                       title="Remove Point"
                     >

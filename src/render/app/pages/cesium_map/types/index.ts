@@ -16,13 +16,25 @@ export interface GPSData {
 }
 
 export interface MissionStatus {
-  state: 'IDLE' | 'RUNNING' | 'DISPATCHED' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  state: string;
   mission_id: string | null;
-  current_index: number;
-  total: number;
+  current_waypoint_index: number;
+  total_waypoints: number;
   last_error: string | null;
+  nav_phase?: string;
   /** Nav2-side state from mission_bridge (IDLE/RUNNING/COMPLETED/FAILED), authoritative for execution */
   ros_state?: string;
+  source?: string;
+  dispatch_phase?: string;
+  /** Health sub-objects from nav_status aggregator */
+  planner?: { status: string; last_error: string | null };
+  controller?: { status: string; tracking_error_m?: number; last_error: string | null };
+  localization?: { overall: string; position_cov_max?: number; gps_fix?: number };
+  alerts?: Record<string, boolean>;
+  /** Nav2 terminal WARN/ERROR log entries from /rosout */
+  recent_logs?: Array<{
+    stamp: number; level: string; node: string; message: string;
+  }>;
 }
 
 export interface IMUData {

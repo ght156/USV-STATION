@@ -18,7 +18,7 @@ class MissionService:
     are exposed via ``/api/mission_status`` so the frontend can poll progress.
     """
 
-    VALID_STATES = {"IDLE", "RUNNING", "DISPATCHED", "COMPLETED", "FAILED", "CANCELLED"}
+    VALID_STATES = {"IDLE", "DISPATCHING"}
 
     def __init__(self, config_service: ConfigService, data_store=None):
         self.config_service = config_service
@@ -27,9 +27,9 @@ class MissionService:
         self._color_proc: Optional[subprocess.Popen] = None
         self._proc_lock = threading.Lock()
         self._state_lock = threading.Lock()
-        self._dispatch_watchdog_timer: Optional[threading.Timer] = None
 
-        # mission status tracking
+        # mission status tracking — GCS only tracks dispatch phase
+        # authoritative mission state comes from navigation via nav_status/task_event
         self.current_mission_id: Optional[str] = None
         self.current_mission_state: str = "IDLE"
         self.current_waypoint_index: int = 0
@@ -49,40 +49,49 @@ class MissionService:
                 if hasattr(self, k):
                     setattr(self, k, v)
 
-    def _cancel_dispatch_watchdog(self) -> None:
-        if self._dispatch_watchdog_timer is not None:
-            self._dispatch_watchdog_timer.cancel()
-            self._dispatch_watchdog_timer = None
-
-    def _dispatch_watchdog_cb(self) -> None:
-        """If still DISPATCHED after 5 s and mission_bridge hasn't responded, reset to IDLE."""
-        with self._state_lock:
-            if self.current_mission_state != "DISPATCHED":
-                return
-        # Check if mission_bridge sent any state since dispatch
-        ros_responded = False
-        if self._data_store is not None:
-            ms = self._data_store.get_core_data().get("mission_bridge_state")
-            ros_responded = bool(ms)
-        if not ros_responded:
-            print("[Waypoint mission] no mission_bridge response — resetting to IDLE")
-            self._set_state(
-                "IDLE",
-                current_mission_id=None,
-                current_waypoint_index=0,
-                total_waypoints=0,
-                last_error="No response from mission_bridge",
-            )
-
     def get_mission_status(self) -> Dict[str, Any]:
-        with self._state_lock:
-            return {
-                "state": self.current_mission_state,
-                "mission_id": self.current_mission_id,
-                "current_index": self.current_waypoint_index,
-                "total": self.total_waypoints,
-                "last_error": self.last_error,
-            }
+        """Return mission status with navigation as authoritative source.
+
+        Priority: /nav_status > /mission_bridge/state (fallback) > GCS local.
+        """
+        result: Dict[str, Any] = {
+            "state": "UNKNOWN",
+            "mission_id": None,
+            "current_waypoint_index": 0,
+            "total_waypoints": 0,
+            "last_error": None,
+            "dispatch_phase": self.current_mission_state.lower(),
+            "source": "stale",
+        }
+
+        if self._data_store is not None:
+            nav = self._data_store.get_nav_status_data()
+            if nav:
+                m = nav.get("task") or nav.get("mission") or {}
+                result["state"] = m.get("state", "UNKNOWN")
+                result["mission_id"] = m.get("task_id") or m.get("mission_id")
+                result["current_waypoint_index"] = m.get("current_waypoint", 0)
+                result["total_waypoints"] = m.get("total_waypoints", 0)
+                result["last_error"] = m.get("last_error")
+                result["nav_phase"] = m.get("nav_phase", "IDLE")
+                result["source"] = "nav_status"
+                # Include health info so frontend can show warnings
+                # even when mission state is still RUNNING
+                result["planner"] = nav.get("planner", {})
+                result["controller"] = nav.get("controller", {})
+                result["localization"] = nav.get("localization", {})
+                result["alerts"] = nav.get("alerts", {})
+                result["recent_logs"] = nav.get("recent_logs", [])
+                return result
+
+            # Fallback to old /mission_bridge/state
+            mb_state = self._data_store.mission_bridge_state_data.get("mission_bridge_state")
+            if mb_state:
+                result["state"] = mb_state
+                result["source"] = "mission_bridge_state"
+                return result
+
+        return result
 
     # ------------------------------------------------------------------
     # Process lifecycle helpers
@@ -173,7 +182,7 @@ class MissionService:
         self._replace_proc("_waypoint_proc", proc)
 
         self._set_state(
-            "RUNNING",
+            "DISPATCHING",
             current_mission_id=mission_id,
             current_waypoint_index=0,
             total_waypoints=len(waypoints),
@@ -187,31 +196,21 @@ class MissionService:
                 stdout, stderr = proc.communicate(timeout=timeout)
                 if proc.returncode != 0:
                     print(f"[Waypoint mission] exited {proc.returncode}: {stderr[-500:]}")
-                    self._set_state("FAILED", last_error=stderr[-200:])
+                    self._set_state("IDLE", last_error=stderr[-200:])
                 else:
-                    print(f"[Waypoint mission] dispatched")
-                    self._set_state(
-                        "DISPATCHED",
-                        current_waypoint_index=len(waypoints) if waypoints else 0,
-                        total_waypoints=len(waypoints) if waypoints else 0,
-                        last_error=None,
-                    )
-                    # Watchdog: if mission_bridge doesn't respond within 5 s, reset to IDLE
-                    self._cancel_dispatch_watchdog()
-                    self._dispatch_watchdog_timer = threading.Timer(5.0, self._dispatch_watchdog_cb)
-                    self._dispatch_watchdog_timer.daemon = True
-                    self._dispatch_watchdog_timer.start()
+                    print(f"[Waypoint mission] dispatched — navigation now authoritative")
+                    self._set_state("IDLE", last_error=None)
             except subprocess.TimeoutExpired:
-                print(f"[Waypoint mission] timeout ({timeout}s), killing …")
+                print(f"[Waypoint mission] timeout ({timeout}s), killing ...")
                 try:
                     proc.kill()
                     proc.wait(timeout=5)
                 except Exception:
                     pass
-                self._set_state("FAILED", last_error="timeout")
+                self._set_state("IDLE", last_error="timeout")
             except Exception as exc:
                 print(f"[Waypoint mission] monitor error: {exc}")
-                self._set_state("FAILED", last_error=str(exc))
+                self._set_state("IDLE", last_error=str(exc))
             finally:
                 self._clear_proc("_waypoint_proc", proc)
 
@@ -261,7 +260,7 @@ class MissionService:
             raise RuntimeError(tail or f"cancel publisher exited {proc.returncode}")
 
         self._set_state(
-            "CANCELLED",
+            "IDLE",
             current_mission_id=None,
             current_waypoint_index=0,
             total_waypoints=0,
@@ -272,7 +271,6 @@ class MissionService:
             "status": "success",
             "message": "cancel published",
             "topic": topic,
-            "state": "CANCELLED",
         }
 
     # ------------------------------------------------------------------

@@ -206,22 +206,28 @@ class APIServer:
 
         @self.app.get("/api/mission_status")
         async def mission_status():
-            """Return current mission state for frontend polling.
-            Merges GCS dispatch state with Nav2-side mission_bridge state.
-            Ros state older than 5 s is treated as stale (dropped)."""
+            """Return mission status from navigation as authoritative source.
+
+            Reads from nav_status aggregator (Phase 1); falls back to
+            /mission_bridge/state when aggregator data is stale.
+            See docs/nav_gcs_refactor_plan.md §11."""
             try:
-                import time
-                status = self.mission_service.get_mission_status()
-                ds = self.data_store
-                with ds.core_lock:
-                    stale = (time.time() - ds._mission_bridge_last_ts) > ds.MISSION_STATE_STALE_SEC
-                if not stale:
-                    ros_state = ds.get_core_data().get("mission_bridge_state")
-                    if ros_state:
-                        status["ros_state"] = ros_state
-                return status
+                return self.mission_service.get_mission_status()
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.get("/api/nav_status")
+        async def nav_status():
+            """Return full aggregated navigation status from nav_status_aggregator.
+
+            Returns {} if aggregator data is stale (>5s).
+            See docs/nav_gcs_refactor_plan.md §3 for JSON schema."""
+            return self.data_store.get_nav_status_data()
+
+        @self.app.get("/api/task_events")
+        async def task_events():
+            """Return recent task events from nav_status_aggregator (max 50)."""
+            return {"events": self.data_store.get_task_events()}
 
     def get_app(self):
         """Get the FastAPI app instance"""

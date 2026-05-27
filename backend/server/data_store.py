@@ -1,6 +1,7 @@
 import threading
 import math
 import time
+import json
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Imu, NavSatFix
 from nav_msgs.msg import Odometry, Path
@@ -12,12 +13,14 @@ class TelemetryDataStore:
 
     GPS_STALE_SEC = 3.0
     MISSION_STATE_STALE_SEC = 5.0
+    NAV_STATUS_STALE_SEC = 5.0
 
     def __init__(self):
         """Initialize telemetry data store with thread-safe data structures"""
         self.core_lock = threading.Lock()
         self.nav2_lock = threading.Lock()
         self.status_lock = threading.Lock()
+        self.event_lock = threading.Lock()
 
         self.imu_data = {}
         self.odom_data = {}
@@ -30,9 +33,14 @@ class TelemetryDataStore:
         self.mavros_status = {}
         self.mission_bridge_state_data = {}
 
+        # nav_status aggregator data (Phase 1)
+        self.nav_status_data = {}
+        self.task_events = []  # capped at 50 recent events
+
         # Timestamps for staleness detection
         self._gps_last_ts = 0.0
         self._mission_bridge_last_ts = 0.0
+        self._nav_status_last_ts = 0.0
 
     def update_imu(self, msg: Imu):
         """Update IMU data with quaternion to Euler angle conversion"""
@@ -159,6 +167,39 @@ class TelemetryDataStore:
         with self.core_lock:
             self._mission_bridge_last_ts = time.time()
             self.mission_bridge_state_data = {"mission_bridge_state": msg.data}
+
+    def update_nav_status(self, msg: StringMsg):
+        """Update aggregated nav status from nav_status_aggregator (Phase 1)"""
+        try:
+            parsed = json.loads(msg.data)
+        except (json.JSONDecodeError, TypeError):
+            return
+        with self.core_lock:
+            self._nav_status_last_ts = time.time()
+            self.nav_status_data = parsed
+
+    def update_task_event(self, msg: StringMsg):
+        """Append task event from nav_status_aggregator (Phase 1), cap at 50"""
+        try:
+            parsed = json.loads(msg.data)
+        except (json.JSONDecodeError, TypeError):
+            return
+        with self.event_lock:
+            self.task_events.append(parsed)
+            if len(self.task_events) > 50:
+                self.task_events = self.task_events[-50:]
+
+    def get_nav_status_data(self):
+        """Return aggregated nav status dict, {} if stale or never received"""
+        with self.core_lock:
+            if time.time() - self._nav_status_last_ts > self.NAV_STATUS_STALE_SEC:
+                return {}
+            return dict(self.nav_status_data)
+
+    def get_task_events(self):
+        """Return copy of recent task events list"""
+        with self.event_lock:
+            return list(self.task_events)
 
     def get_core_data(self):
         """Get core telemetry data (IMU, GPS, velocity, odometry)"""

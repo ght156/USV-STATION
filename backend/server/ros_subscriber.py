@@ -70,7 +70,21 @@ class TelemetrySubscriber(Node):
             self.data_store.update_mission_bridge_state,
             10
         )
-    
+
+        self.nav_status_sub = self.create_subscription(
+            StringMsg,
+            '/nav_status',
+            self.data_store.update_nav_status,
+            10
+        )
+
+        self.task_event_sub = self.create_subscription(
+            StringMsg,
+            '/task_event',
+            self.data_store.update_task_event,
+            10
+        )
+
     def _log_subscribed_topics(self):
         """Log subscribed ROS2 topics"""
         self.get_logger().info(" Listening Topics:")
@@ -81,3 +95,5 @@ class TelemetrySubscriber(Node):
         self.get_logger().info(" MAVROS State: /mavros/state (armed, mode, connected)")
         self.get_logger().info(" Nav2 Plan: /plan")
         self.get_logger().info(" Mission Bridge State: /mission_bridge/state")
+        self.get_logger().info(" Nav Aggregated Status: /nav_status")
+        self.get_logger().info(" Task Events: /task_event")

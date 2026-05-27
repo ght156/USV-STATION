@@ -126,7 +126,7 @@ export const useMissionHandlers = (service: PlaneService): MissionHandlersReturn
 
   useEffect(() => {
     fetchMissionStatus()
-    const interval = setInterval(fetchMissionStatus, 2000)
+    const interval = setInterval(fetchMissionStatus, 1000)
     return () => clearInterval(interval)
   }, [fetchMissionStatus])
 
