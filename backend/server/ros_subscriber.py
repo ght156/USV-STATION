@@ -1,5 +1,6 @@
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Imu, NavSatFix
 from nav_msgs.msg import Odometry, Path
@@ -71,11 +72,17 @@ class TelemetrySubscriber(Node):
             10
         )
 
+        # Match nav_status_aggregator: RELIABLE + TRANSIENT_LOCAL
+        nav_status_qos = QoSProfile(
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            depth=10,
+        )
         self.nav_status_sub = self.create_subscription(
             StringMsg,
             '/nav_status',
             self.data_store.update_nav_status,
-            10
+            nav_status_qos,
         )
 
         self.task_event_sub = self.create_subscription(
